@@ -4,7 +4,7 @@
 <p>适用前提条件： </p>
 <ul>
 <li>Promise</li>
-<li>ES7 awaiy</li>
+<li>ES7 await</li>
 </ul>
 
 <br/>
@@ -39,6 +39,47 @@
     true
     </li>
 </ul>
-<p>
+<p>代码示例</p>
+<preview>
+<!DOCTYPE>
+<html>
 
-</p>
+<head>
+    <title> System API 测试页面</title>
+</head>
+
+<body>
+
+    <input type="file" id='file' />
+
+    <audio controls id='audio'></audio>
+
+
+    <script src="FileSystem.js"></script> 
+
+    <script>
+        file.addEventListener('change', async function (ev) {
+
+            if (this.files) {
+
+                var reader = new FileReader()
+
+                reader.onload = async function (ev) {
+
+                    var blob = await FileSystem.getInstance().then(fs => fs.writeToFile('music/txt.txt', ev.target.result))
+                    audio.src = window.URL.createObjectURL(blob)
+                    audio.play()
+
+                }
+                reader.readAsArrayBuffer(this.files[0])
+
+
+
+            }
+        })
+    </script>
+</body>
+
+
+</html>
+</preview>
