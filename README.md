@@ -16,7 +16,7 @@
     </li>
     <li>
     readEntries:<br/>
-    IDBProvider.getInstance().then(fs=>fs.readEntries()).then(f=>console.log(f))<br/>
+    FileSystem.getInstance().then(fs=>fs.readEntries()).then(f=>console.log(f))<br/>
     ["music/txt.txt"]
     </li>
     <li>getFile:<br/>
