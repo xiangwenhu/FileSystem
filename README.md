@@ -20,22 +20,22 @@
     ["music/txt.txt"]
     </li>
     <li>getFile:<br/>
-        IDBProvider.getInstance().then(fs=>fs.getFile('music/txt.txt')).then(f=>console.log(f))<br/>
+        FileSystem.getInstance().then(fs=>fs.getFile('music/txt.txt')).then(f=>console.log(f))<br/>
         Blob {size: 2711169, type: "null"}
     </li>        
     <li>
         ensureDirectory:<br/>
-        IDBProvider.getInstance().then(fs=>fs.ensureDirectory('music/vbox')).then(r=>console.log( r))<br/>
+        FileSystem.getInstance().then(fs=>fs.ensureDirectory('music/vbox')).then(r=>console.log( r))<br/>
         music/vbox
     </li>
     <li>
         readAllEntries:<br/>
-        IDBProvider.getInstance().then(fs=>fs.readAllEntries()).then(f=>console.log(f))<br/>
+        FileSystem.getInstance().then(fs=>fs.readAllEntries()).then(f=>console.log(f))<br/>
         ["music/txt.txt"]
     </li>
     <li>
     clear:<br/>
-    IDBProvider.getInstance().then(fs=>fs.clear()).then(f=>console.log(f)).catch(err=>console.log(err)) 
+    FileSystem.getInstance().then(fs=>fs.clear()).then(f=>console.log(f)).catch(err=>console.log(err)) 
     true
     </li>
 </ul>
