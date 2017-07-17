@@ -114,9 +114,7 @@ class FileStorageQuota {
   }
 }
 
-window.FileStorageQuota = self.FileStorageQuota = FileStorageQuota
-
-class LocalFileSystem {
+class FSProvider {
 
   constructor(fs) {
     // 文件系统
@@ -151,7 +149,7 @@ class LocalFileSystem {
         fsBaseUrl = FS_SCHEME + location.origin + '/' + (type === 1 ? _PERSISTENT : _TEMPORARY) + '/'
       return new Promise((resolve, reject) => {
         window.requestFileSystem(type, size * 1024 * 1024, fs => {
-          that._instance = new LocalFileSystem(fs)
+          that._instance = new FSProvider(fs)
           that._instance._type = typeValue
           that._instance._fsBaseUrl = fsBaseUrl
           return resolve(that._instance)
@@ -258,7 +256,7 @@ class LocalFileSystem {
     return new Promise((resolve, reject) => {
       // 写入成功
       writer.onwriteend = () => {
-        resolve(fe)
+        resolve(data)
       }
 
       // 写入失败
@@ -281,8 +279,14 @@ class LocalFileSystem {
     } else {
       entry = await this.resolveLocalFileSystemURL(path)
     }
-    let reader = entry.createReader()
-    return toPromise(reader.readEntries, reader)
+
+    //let reader = entry.createReader()
+    //return toPromise(reader.readEntries, reader).then
+    let refResults = []
+    let entries = await this._readEntriesRecursively(entry, refResults)
+    refResults.push(entry)
+    refResults.sort((a, b) => a.fullPath > b.fullPath)
+    return refResults.map(entry => entry.fullPath)
   }
 
   /**
@@ -292,7 +296,7 @@ class LocalFileSystem {
     let refResults = []
     let entries = await this._readEntriesRecursively(this._root, refResults)
     refResults.sort((a, b) => a.fullPath > b.fullPath)
-    return refResults
+    return refResults.map(entry => entry.fullPath)
   }
 
   /**
@@ -311,7 +315,7 @@ class LocalFileSystem {
     return promiseForEach(_dirs, (dir, index) => {
       return this._getDirectory(_dirs.slice(0, index + 1).join('/'), true)
     }, true).then((dirEntes) => {
-      return dirEntes && dirEntes[dirEntes.length - 1]
+      return (dirEntes && dirEntes[dirEntes.length - 1]).fullPath
     })
   }
 
@@ -321,7 +325,7 @@ class LocalFileSystem {
   async clear() {
     let entries = await this.readEntries()
     let ps_entries = entries.map(e => e.isFile ? toPromise(e.remove, e) : toPromise(e.removeRecursively, e))
-    return Promise.all(ps_entries)
+    return Promise.all(ps_entries).then(r => true)
   }
 
   /**
@@ -336,13 +340,11 @@ class LocalFileSystem {
 
 }
 
-window.LocalFileSystem = self.LocalFileSystem = LocalFileSystem
-
 // 测试语句
-// 读取某个目录的子目录和文件：  LocalFileSystem.getInstance().then(fs=>fs.readEntries()).then(f=>console.log(f))
-// 写文件         LocalFileSystem.getInstance().then(fs=>fs.writeToFile('music/txt.txt','爱死你')).then(f=>console.log(f))
-// 获取文件：     LocalFileSystem.getInstance().then(fs=>fs.getFile('music/txt.txt')).then(f=>console.log(f))
-// 递归创建目录：  LocalFileSystem.getInstance().then(fs=>fs.ensureDirectory('music/vbox')).then(r=>console.log( r))
-// 递归获取：     LocalFileSystem.getInstance().then(fs=>fs.readAllEntries()).then(f=>console.log(f))
-// 删除所有：     LocalFileSystem.getInstance().then(fs=>fs.clear()).then(f=>console.log(f)).catch(err=>console.log(err)) 
+// 读取某个目录的子目录和文件：  FSProvider.getInstance().then(fs=>fs.readEntries()).then(f=>console.log(f))
+// 写文件         FSProvider.getInstance().then(fs=>fs.writeToFile('music/txt.txt','爱死你')).then(f=>console.log(f))
+// 获取文件：     FSProvider.getInstance().then(fs=>fs.getFile('music/txt.txt')).then(f=>console.log(f))
+// 递归创建目录：  FSProvider.getInstance().then(fs=>fs.ensureDirectory('music/vbox')).then(r=>console.log( r))
+// 递归获取：     FSProvider.getInstance().then(fs=>fs.readAllEntries()).then(f=>console.log(f))
+// 删除所有：     FSProvider.getInstance().then(fs=>fs.clear()).then(f=>console.log(f)).catch(err=>console.log(err)) 
 
