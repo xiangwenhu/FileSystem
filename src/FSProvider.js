@@ -5,8 +5,8 @@
  */
 /* import { toPromise, promiseForEach } from './utils' */
 
-if (!window.location.origin) {
-  window.location.origin = window.location.protocol + '//' + window.location.hostname + (window.location.port ? ':' + window.location.port : '')
+if (!location.origin) {
+  location.origin = location.protocol + '//' + location.hostname + (location.port ? ':' + location.port : '')
 }
 // 文件系统请求标识 
 window.requestFileSystem = window.requestFileSystem || window.webkitRequestFileSystem
@@ -339,6 +339,7 @@ class FSProvider {
   }
 
 }
+
 
 // 测试语句
 // 读取某个目录的子目录和文件：  FSProvider.getInstance().then(fs=>fs.readEntries()).then(f=>console.log(f))

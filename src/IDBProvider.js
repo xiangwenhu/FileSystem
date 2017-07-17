@@ -106,15 +106,15 @@ class IDBProvider {
             } else if (typeof content === 'string') {
                 data = new Blob([content])
             }
-
+ 
             // 存入数据
             let trans = this.transaction
             trans.objectStore(this._storeName).put(data, path)
-
+ 
             trans.objectStore(this._storeName).get(path).onsuccess = event => {
                 resolve(event.target.result)
             }
-
+ 
             trans.onerror = event => {
                 reject(trans.error)
             }
@@ -154,6 +154,7 @@ class IDBProvider {
 
 IDBProvider._dbName = '_fs_db_'
 IDBProvider._storeName = '_fs_store'
+
 
 // 测试语句
 // 读取某个目录的子目录和文件：  IDBProvider.getInstance().then(fs=>fs.readEntries()).then(f=>console.log(f))

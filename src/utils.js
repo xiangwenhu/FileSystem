@@ -53,21 +53,19 @@ function promiseForEach(arr, cb, needResults) {
 
 
 let support = {
-  get FileSystem() {
-    let _w_ = window
+  get FileSystem() {   
     // 文件系统请求标识 
-    _w_.requestFileSystem = _w_.requestFileSystem || _w_.webkitRequestFileSystem
+    window.requestFileSystem = window.requestFileSystem || window.webkitRequestFileSystem
     // 根据URL取得文件的读取权限 
-    _w_.resolveLocalFileSystemURL = _w_.resolveLocalFileSystemURL || _w_.webkitResolveLocalFileSystemURL
+    window.resolveLocalFileSystemURL = window.resolveLocalFileSystemURL || window.webkitResolveLocalFileSystemURL
 
-    return _w_.requestFileSystem && _w_.resolveLocalFileSystemURL
+    return window.requestFileSystem && window.resolveLocalFileSystemURL
   },
-  get IndexedDB() {
-    let _w_ = window
-    _w_.indexedDB = _w_.indexedDB || _w_.mozIndexedDB || _w_.webkitIndexedDB || _w_.msIndexedDB
-    _w_.IDBTransaction = _w_.IDBTransaction || _w_.webkitIDBTransaction || _w_.msIDBTransaction
-    _w_.IDBKeyRange = _w_.IDBKeyRange || _w_.webkitIDBKeyRange || _w_.msIDBKeyRange
-    return _w_.indexedDB && _w_.IDBTransaction && _w_.IDBKeyRange
+  get IndexedDB() {  
+    window.indexedDB = window.indexedDB || window.mozIndexedDB || window.webkitIndexedDB || window.msIndexedDB
+    window.IDBTransaction = window.IDBTransaction || window.webkitIDBTransaction || window.msIDBTransaction
+    window.IDBKeyRange = window.IDBKeyRange || window.webkitIDBKeyRange || window.msIDBKeyRange
+    return window.indexedDB && window.IDBTransaction && window.IDBKeyRange
   }
 }
 
