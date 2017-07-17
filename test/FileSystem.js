@@ -427,7 +427,7 @@ class FSProvider {
 
 
 let _w_ = window
-_w_.indexedDB = _w_.indexedDB || _w_.mozIndexedDB || _w_.webkitIndexedDB || _w_.msIndexedDB
+_indexedDB_ = _w_.indexedDB || _w_.mozIndexedDB || _w_.webkitIndexedDB || _w_.msIndexedDB
 _w_.IDBTransaction = _w_.IDBTransaction || _w_.webkitIDBTransaction || _w_.msIDBTransaction
 _w_.IDBKeyRange = _w_.IDBKeyRange || _w_.webkitIDBKeyRange || _w_.msIDBKeyRange
 
@@ -470,14 +470,14 @@ class IDBProvider {
             Promise.resolve(this._instance)
         }
         return new Promise((resolve, reject) => {
-            let request = indexedDB.open(IDBProvider._dbName, dbVersion)
+            let request = _indexedDB_.open(IDBProvider._dbName, dbVersion)
             request.onerror = event => {
                 return reject(null)
             }
             request.onsuccess = event => {
                 let db = request.result
                 // 老版本，新版本是onupgradeneeded
-                if (db.setVersion && db.version != dbVersion) {
+                if (db.setVersion && db.version !== dbVersion) {
                     var setVersion = db.setVersion(dbVersion);
                     setVersion.onsuccess = function () {
                         db.createObjectStore(this._storeName)
