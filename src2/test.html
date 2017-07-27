@@ -1,0 +1,41 @@
+<!DOCTYPE>
+<html>
+
+<head>
+    <title> System API 测试页面</title>
+</head>
+
+<body>
+
+    <input type="file" id='file' />
+
+    <audio controls id='audio'></audio>
+
+
+    <script src="FileSystem.js"></script>
+
+    <script>
+        file.addEventListener('change', async function (ev) {
+
+            if (this.files) {
+
+                var reader = new FileReader()
+
+                reader.onload = async function (ev) {
+
+                    var fileEntry = await FileSystem.getInstance().then(fs => fs.root.getFile('music/txt.txt')).then(fe => fe.write(ev.target.result))
+                    audio.src = window.URL.createObjectURL(fileEntry.file.blob)
+                    audio.play()
+
+                }
+                reader.readAsArrayBuffer(this.files[0])
+
+
+
+            }
+        })
+    </script>
+</body>
+
+
+</html>

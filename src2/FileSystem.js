@@ -2,9 +2,12 @@
 
     const FILE_ERROR = {
         FILE_EXISTED: '文件已存在',
-        Directory_EXISTED: '目录已存在'
+        Directory_EXISTED: '目录已存在',
+        ONLY_FILE_WRITE: '只有文件才能写入',
+        NOT_ENTRY: '不是有效的Entry对象'
     }
     const DIR_SEPARATOR = '/'
+    const DIR_OPEN_BOUND = String.fromCharCode(DIR_SEPARATOR.charCodeAt(0) + 1);
     // from https://github.com/ebidel/idb.filesystem.js/blob/master/src/idb.filesystem.js
     // When saving an entry, the fullPath should always lead with a slash and never
     // end with one (e.g. a directory). Also, resolve '.' and '..' to an absolute
@@ -85,24 +88,33 @@
             this.fullPath = fullPath
         }
 
+        /**
+         * 获取元数据 done
+         */
         getMetadata() {
             return this._dispatch('getMetadata')
         }
 
         moveTo(parent, newName) {
-            this._dispatch('moveTo', [...arguments])
+            throw NOT_IMPLEMENTED_ERROR
+            //this._dispatch('moveTo', [...arguments])
         }
 
-        copyTo() {
-            this._dispatch('copyTo', [...arguments])
+        copyTo(parent, newName) {
+            throw NOT_IMPLEMENTED_ERROR
+            // this._dispatch('copyTo', [...arguments])
         }
 
         toURL() {
-            this._dispatch('toURL')
+            throw NOT_IMPLEMENTED_ERROR
+            //this._dispatch('toURL')
         }
 
+        /**
+         * 删除  done
+         */
         remove() {
-            this._dispatch('remove')
+            return this._dispatch('remove')
         }
 
         getParent() {
@@ -133,11 +145,15 @@
             this.file = file
         }
 
-        write(path, content, type = 'text/plain', append = false) {
-            this._dispatch('writeToFile', path, content, type = 'text/plain', append = false)
+        /**
+         * FileEntry写入数据 done
+         * @param {Blob|String|BufferArray} content 
+         * @param {String} type 
+         * @param {Boolean} append 
+         */
+        write(content, type = 'text/plain', append = false) {
+            return this._dispatch('write', content, type, append)
         }
-
-        //自定义的
     }
 
     class DirectoryEntry extends Entry {
@@ -145,16 +161,30 @@
             super(false, true, name, fullPath)
         }
 
+        /**
+         * 
+         * @param {String} path 
+         * @param {Object} options 
+         */
         getFile(path, options = { create: true, exclusive: false }) {
             return this._dispatch('getFile', path, options)
         }
 
+        /**
+         * 获取目录 done
+         * @param {String} path 
+         * @param {Object} options 
+         */
         getDirectory(path, options = { create: true, exclusive: false }) {
             return this._dispatch('getDirectory', path, options)
         }
 
         removeRecursively() {
             return this._dispatch('removeRecursively')
+        }
+
+        getEntries() {
+            return this._dispatch('getEntries')
         }
     }
 
@@ -217,13 +247,32 @@
 
         _toPromise(method, ...args) {
             try {
+                let suc
+                if (args.length >= 1 && typeof args[args.length - 1] === 'function') {
+                    suc = args[args.length - 1]
+                    args = args.slice(0, args.length - 1)
+                }
+
                 return new Promise((resolve, reject) => {
                     // 获得事务
                     let trans = this.transaction
                     // 获得请求
                     let req = trans.objectStore(this._storeName)[method](...args)
                     // 请求成功
-                    req.onsuccess = event => resolve(event.target.result)
+                    if (['openCursor', 'openKeyCursor'].indexOf(method) >= 0 && suc) { //游标
+                        req.onsuccess = function (event) {
+                            suc(event)
+                        }
+                        trans.oncomplete = function () {
+                            return resolve()
+                        }
+                        trans.onsuccess = function () {
+                            return resolve()
+                        }
+                    }
+                    else {
+                        req.onsuccess = event => resolve(event.target.result)
+                    }
                     // 请求失败
                     req.onerror = event => reject(req.error)
                     // 事务失败
@@ -234,7 +283,18 @@
             }
         }
 
-        writeToFile(entry, path, content, type = 'text/plain', append = false) {
+        /**
+         * TODO::// 暂不支持 append
+         * @param {Entry} entry 
+         * @param {写入的内容} content 
+         * @param {blob类型} type 
+         * @param {是否是append模式} append 
+         */
+        write(entry, content, type = 'text/plain', append = false) {
+            this._checkEntry(entry)
+            if (entry.isFile !== true) {
+                throw new FileError({ message: FILE_ERROR.ONLY_FILE_WRITE })
+            }
             let data = content
             // 不是blob，转为blob
             if (content instanceof ArrayBuffer) {
@@ -244,29 +304,74 @@
             } else {
                 data = new Blob([content], { type })
             }
-            return this._toPromise('put', data, path).then(() => this.getFile(path))
+            let file = entry.file
+            if (!file) { // 不存在创建
+                file = new FSFile(path.split(DIR_SEPARATOR).pop(), data.size, type, new Date(), data)
+                entry.file = file
+            } else { //存在更新
+                file.lastModifiedDate = new Date()
+                file.type = type
+                file.size = data.size
+                file.blob = data
+            }
+
+            return this._toPromise('put', entry, entry.fullPath).then(() => entry)
         }
 
         getFile(entry, path, { create, exclusive }) {
+            return this.getEntry(...arguments, true)
+        }
+
+        getDirectory(entry, path, { create, exclusive }) {
+            return this.getEntry(...arguments, false)
+        }
+
+        remove(entry) {
+            this._checkEntry(entry)
+            return this._toPromise('delete', entry.fullPath).then(() => true)
+        }
+
+        removeRecursively(entry) {
+            this._checkEntry(entry)
+            var range = IDBKeyRange.bound(entry.fullPath, entry.fullPath + DIR_OPEN_BOUND, false, true);
+            return this._toPromise('delete', range).then(() => true)
+        }
+
+        /**
+         * 获得元数据
+         * @param {Entry} entry 
+         */
+        getMetadata(entry) {
+            let f = entry.file || {}
+            return new Metadata(f && f.lastModifiedDate || null, f && f.size || 0)
+        }
+
+        /**
+         * 获取文件或者目录
+         * @param {Entry} entry 
+         * @param {String} path 
+         * @param {String} param2 
+         * @param {Boolean} getFile true获取文件 false 获取目录
+         */
+        getEntry(entry, path, { create, exclusive = false }, getFile = true) {
+            this._checkEntry(entry)
             path = resolveToFullPath(entry.fullPath, path)
             return this._toPromise('get', path).then(fe => {
                 if (create === true && exclusive === true && fe) { //创建 && 排他 && 存在
                     throw new FileError({
-                        message: FILE_ERROR.FILE_EXISTED
+                        message: getFile ? FILE_ERROR.FILE_EXISTED : FILE_ERROR.Directory_EXISTED
                     })
                 } else if (create === true && !fe) { //创建 && 文件不存在
                     let name = path.split(DIR_SEPARATOR).pop(),
-                        fileEntry = new FileEntry(name, path),
-                        fileE = new FSFile(name, 0, null, new Date(), null)
-                    fileEntry.file = fileE
-
-                    return this._toPromise('put', fileEntry, fileEntry.fullPath).then((r) => {
-                        return Entry.copyFrom(fileEntry)
+                        newEntry = getFile ? new FileEntry(name, path) : new DirectoryEntry(name, path),
+                        fileE = getFile ? new FSFile(name, 0, null, new Date(), null) : null
+                    if (getFile) newEntry.file = fileE
+                    return this._toPromise('put', newEntry, newEntry.fullPath).then(() => {
+                        return Entry.copyFrom(newEntry)
                     })
-
                 } else if (!create && !fe) {// 不创建 && 文件不存在
                     throw NOT_FOUND_ERROR
-                } else if (!create && fe && fe.isDirectory) { // 不创建 && 文件存在 && 文件是目录
+                } else if ((!create && fe && fe.isDirectory && getFile) || (!create && fe && fe.isDirectory && getFile)) { // 不创建 && 文件存在 && 文件是目录
                     throw new FileError({
                         message: FILE_ERROR.Directory_EXISTED
                     })
@@ -274,15 +379,60 @@
                     return Entry.copyFrom(fe)
                 }
             })
+
         }
 
         /**
-         * 获得元数据
+         * 获得父目录
+         * @param {Entry} entry 
+         */
+        getParent(entry) {
+            this._checkEntry(entry)
+            if (entry.fullPath == DIR_SEPARATOR) { // 已经是根目录
+                return entry
+            }
+            let parentFullPath = entry.fullPath.substring(0, entry.fullPath.lastIndexOf(DIR_SEPARATOR))
+            return this.getDirectory(this.root, parentFullPath, { create: false }, false)
+        }
+
+        /**
+         * 获得目录下的目录和文件
+         * @param {Entry} entry 
+         */
+        getEntries(entry) {
+            let range = null,
+                results = []
+            if (entry.fullPath != DIR_SEPARATOR && entry.fullPath != '') {
+                //console.log(fullPath + '/', fullPath + DIR_OPEN_BOUND)
+                range = IDBKeyRange.bound(
+                    fullPath + DIR_SEPARATOR, fullPath + DIR_OPEN_BOUND, false, true);
+            }
+            //TODO::为嘛用游标？
+            let valPartsLen, fullPathPartsLen
+            return this._toPromise('openCursor', range, function (event) {
+                var cursor = event.target.result;
+                if (cursor) {
+                    var val = cursor.value;
+                    valPartsLen = val.fullPath.split(DIR_SEPARATOR).length;
+                    fullPathPartsLen = entry.fullPath.split(DIR_SEPARATOR).length;
+                    // 区分根目录和非根目录
+                    if ((entry.fullPath == DIR_SEPARATOR && valPartsLen < fullPathPartsLen + 1) ||
+                        (entry.fullPath != DIR_SEPARATOR && valPartsLen == fullPathPartsLen + 1)) {
+                        results.push(val.isFile ? new FileEntry(val.name, val.fullPath, val.file) : new DirectoryEntry(val.name, val.fullPath));
+                    }
+                    cursor['continue']();
+                }
+            }).then(() => results)
+        }
+
+        /**
+         * 检查Entry
          * @param {*Entry} entry 
          */
-        getMetadata(entry) {
-            let f = entry.file || {}
-            return new Metadata(f && f.lastModifiedDate || null, f && f.size || 0)
+        _checkEntry(entry) {
+            if (!entry || !(entry instanceof Entry)) {
+                throw new FileError({ message: FILE_ERROR.NOT_ENTRY })
+            }
         }
     }
 
