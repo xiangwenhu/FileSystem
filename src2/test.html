@@ -30,10 +30,25 @@
                 }
                 reader.readAsArrayBuffer(this.files[0])
 
-
-
             }
         })
+
+        async function test() {
+            let fs = await FileSystem.getInstance()
+            // 获取目录
+            let dir_vbox = await fs.root.getDirectory('vbox')
+            let dir_v1 = await dir_vbox.getDirectory('v1')
+            let dir_v2 =await dir_v1.getDirectory('v2')
+            //getParent 测试 根节点
+            await fs.root.getParent().then(f => console.log(f))
+            //获取文件，不存在创建
+            let f1 = await dir_v2.getFile('天安门.txt')
+            // 写入文件
+            await f1.write('我哎北京天安门，')
+            //文件获得父目录
+            await f1.getParent().then(d=>console.log(d))
+        }
+        test()
     </script>
 </body>
 

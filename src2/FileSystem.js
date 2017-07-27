@@ -117,8 +117,9 @@
             return this._dispatch('remove')
         }
 
+
         getParent() {
-            this._dispatch('getParent')
+            return this._dispatch('getParent')
         }
     }
 
@@ -162,9 +163,9 @@
         }
 
         /**
-         * 
-         * @param {String} path 
-         * @param {Object} options 
+         * 获取文件 done
+         * @param {String} path 路径
+         * @param {Object} options  create:是否创建 ， exclusive 排他
          */
         getFile(path, options = { create: true, exclusive: false }) {
             return this._dispatch('getFile', path, options)
@@ -179,10 +180,16 @@
             return this._dispatch('getDirectory', path, options)
         }
 
+        /**
+         * 递归删除 done
+         */
         removeRecursively() {
             return this._dispatch('removeRecursively')
         }
 
+        /**
+         * 获取目录下的目录和文件
+         */
         getEntries() {
             return this._dispatch('getEntries')
         }
@@ -223,14 +230,14 @@
                             db.createObjectStore(this._storeName)
                             this._instance = new FileSystem()
                             this._instance._db = request.result
-                            this._instance.root = FileSystem.createRoot()
+                            this._instance.root = new DirectoryEntry('/', '/')
                             FileSystem._instance = this._instance
                             return resolve(this._instance)
                         }
                     } else {
                         this._instance = new FileSystem()
                         this._instance._db = request.result
-                        this._instance.root = FileSystem.createRoot()
+                        this._instance.root = new DirectoryEntry('/', '/')
                         FileSystem._instance = this._instance
                         return resolve(this._instance)
                     }
@@ -318,6 +325,12 @@
             return this._toPromise('put', entry, entry.fullPath).then(() => entry)
         }
 
+        /**
+         * 
+         * @param {Entry} entry 
+         * @param {String} path 
+         * @param {Object} create 是否创建  exclusive排他
+         */
         getFile(entry, path, { create, exclusive }) {
             return this.getEntry(...arguments, true)
         }
@@ -388,10 +401,14 @@
          */
         getParent(entry) {
             this._checkEntry(entry)
-            if (entry.fullPath == DIR_SEPARATOR) { // 已经是根目录
+            if (entry.fullPath === DIR_SEPARATOR) { // 已经是根目录
                 return entry
             }
             let parentFullPath = entry.fullPath.substring(0, entry.fullPath.lastIndexOf(DIR_SEPARATOR))
+            //上级目录为根目录的情况
+            if (parentFullPath === '') {
+                return this.root
+            }
             return this.getDirectory(this.root, parentFullPath, { create: false }, false)
         }
 
@@ -434,6 +451,11 @@
                 throw new FileError({ message: FILE_ERROR.NOT_ENTRY })
             }
         }
+
+        //TODO::递归检查和创建DirectoryEntry
+        _ensureDirectory(entry) {
+            throw NOT_IMPLEMENTED_ERROR
+        }
     }
 
 
@@ -441,16 +463,12 @@
         self.indexedDB_ = self.indexedDB || self.mozIndexedDB || self.webkitIndexedDB || self.msIndexedDB
         self.IDBTransaction = self.IDBTransaction || self.webkitIDBTransaction || self.msIDBTransaction
         self.IDBKeyRange = self.IDBKeyRange || self.webkitIDBKeyRange || self.msIDBKeyRange
-        return self.indexedDB && self.IDBTransaction && self.IDBKeyRange
+        return !!(self.indexedDB && self.IDBTransaction && self.IDBKeyRange)
     }
 
     FileSystem._dbName = '_fs_db_'
     FileSystem._storeName = '_fs_store'
 
-
-    FileSystem.createRoot = function () {
-        return new DirectoryEntry('/', '/')
-    }
 
     self.Entry = Entry
     self.FileEntry = FileEntry
