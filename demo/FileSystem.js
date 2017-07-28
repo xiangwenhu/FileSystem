@@ -103,11 +103,11 @@
 
     const NOT_IMPLEMENTED_ERROR = new FileError({
         code: 1000,
-        name: '方法未实现'
+        message: '方法未实现'
     }),
         NOT_FOUND_ERROR = new FileError({
             code: 404,
-            name: '未找到'
+            message: '未找到'
         }),
         NOT_SUPPORTED = new Error('So Low , So Young')
 
@@ -420,6 +420,9 @@
          */
         getEntry(entry, path, { create, exclusive = false }, getFile = true) {
             this._checkEntry(entry)
+            if (path === DIR_SEPARATOR) { // 如果获取'/'直接返回当前目录
+                return entry
+            }
             path = resolveToFullPath(entry.fullPath, path)
             return this._toPromise('get', path).then(fe => {
                 if (create === true && exclusive === true && fe) { //创建 && 排他 && 存在

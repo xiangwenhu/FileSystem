@@ -1,7 +1,13 @@
-var _files = document.querySelector('.files'),
+let _files = document.querySelector('.files'),
     _rMenu = document.getElementById("right-menu"),
     _pMenu = document.querySelector('.menu>ul'),
     fs = null
+
+const FileUtil = {
+    isFolder(f) {
+        return !f.type && f.size % 4096 == 0
+    }
+}
 
 window.onload = async function () {
 
@@ -64,9 +70,9 @@ function displayEntries(entries) {
 function buildEntry(fullPath, isFile) {
     let name = fullPath.split('/').pop()
     return (
-        `<figure class="item">
+        `<figure class="item ellipsis">
                     <img src="images/${isFile ? 'file' : 'folder'}.png" alt="${name}" data-fullPath='${fullPath}'></img>
-                    <p>${name}</p>
+                    <p class='ellipsis' title='${name}'>${name}</p>
         </figure>`)
 }
 
@@ -124,13 +130,48 @@ async function entryEntry(fs, fullPath) {
 }
 
 //注册拖拽事件
-function registerDragEvents() {
-    _files.addEventListener('drop', function (e) {
+function registerDragEvents(fs) {
+    _files.addEventListener('drop', async function (e) {
         e.stopPropagation();
         e.preventDefault();
-        console.log(e.dataTransfer.files)
-    }, false)
+        let files = e.dataTransfer.files, file, fileEntry, override
+        fullpath = getCurrentPath()
+        if (!files || files.length === 0) {
+            return
+        }
+        let currentDir = await fs.root.getDirectory(fullpath)
+        for (let i = 0; i < files.length; i++) {
+            file = files[i]
+            try {
+                if (FileUtil.isFolder(file)) { //文件夹
+                    await currentDir.getDirectory(file.name)
+                } else { // 文件
+                    try {
+                        // 不存在不创建， 会返回404
+                        fileEntry = await currentDir.getFile(file.name, { create: false })
+                    } catch (err) {
+                        if (err.code === 404) {
+                            fileEntry = await currentDir.getFile(file.name, { create: true })
+                            fileEntry.write(file, file.type)
+                            continue
+                        }
+                        alert(err.message || '未知错误')
+                    }
 
+                    //文件存在,提示覆盖
+                    override = window.confirm(`${file.name}已经存在，是否覆盖？`)
+                    if (!override) {
+                        continue
+                    }
+                    fileEntry.write(file, file.type)
+                }
+            } catch (err) {
+                alert(err.message || '未知错误')
+                break
+            }
+        }
+        entryEntry(fs, fullpath)
+    }, false)
 
     _files.addEventListener('dragenter', function (e) {
         e.preventDefault();
@@ -141,9 +182,14 @@ function registerDragEvents() {
     }, false)
 }
 
-  
+//获得目录全路径
+function getCurrentPath() {
+    return [..._pMenu.querySelectorAll('li>a')].pop().getAttribute('data-fullpath')
+}
 
-    // 禁止部分事件
-    function hiddenEvents() {
 
-    }
+
+// 禁止部分事件
+function hiddenEvents() {
+
+}

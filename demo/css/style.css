@@ -21,6 +21,12 @@ a{
     text-decoration: none
 }
 
+.ellipsis {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 #container{
     display: flex;
     flex-direction: column;
@@ -44,7 +50,8 @@ a{
     box-shadow: 0 -2px 3px #ddd inset, 0 2px 3px #ddd inset;
     background: -webkit-linear-gradient(#fff 80%, #eee);   
     border: 1px solid #eee;
-    overflow: auto
+    overflow: auto;
+    min-width: 10rem;
 }
 
 .header{
@@ -95,7 +102,8 @@ a{
 
 .files{
     display: flex;
-    flex-wrap:wrap;    
+    flex-wrap:wrap;  
+    align-content: flex-start;  
 }
 
 .files .item{
