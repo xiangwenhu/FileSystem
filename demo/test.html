@@ -38,15 +38,23 @@
             // 获取目录
             let dir_vbox = await fs.root.getDirectory('vbox')
             let dir_v1 = await dir_vbox.getDirectory('v1')
-            let dir_v2 =await dir_v1.getDirectory('v2')
+            let dir_v2 = await dir_v1.getDirectory('v2')
             //getParent 测试 根节点
             await fs.root.getParent().then(f => console.log(f))
             //获取文件，不存在创建
             let f1 = await dir_v2.getFile('天安门.txt')
             // 写入文件
-            await f1.write('我哎北京天安门，')
+            await f1.write('i 加好么 ok')
             //文件获得父目录
-            await f1.getParent().then(d=>console.log(d))
+            await f1.getParent().then(d => console.log(d))
+
+            f1.toURL().then(url => console.log(url))
+
+            f1.readAsArrayBuffer().then(b => console.log(b))
+            f1.readAsBinaryString().then(b => console.log(b))
+            f1.readAsDataURL().then(b => console.log(b))
+            f1.readAsText().then(b => console.log(b))
+            f1.getBlob().then(b=>console.log(b))
         }
         test()
     </script>

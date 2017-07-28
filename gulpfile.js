@@ -33,3 +33,7 @@ gulp.task('compress', function() {
     .pipe(concat('FileSystem.js'))
     .pipe(gulp.dest('dist/')).pipe(gulp.dest('test/'));
 });
+
+gulp.task('compress2', function() {
+  return gulp.src(['src2/FileSystem.js']).pipe(gulp.dest('demo/'));
+});

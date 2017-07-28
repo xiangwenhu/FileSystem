@@ -1,0 +1,112 @@
+*{
+    padding: 0;
+    margin: 0
+}
+
+html{
+    font-size: 16px
+}
+
+html,body,#container{
+    width: 100%;
+    height: 100%;
+}
+
+
+li{
+    list-style: none
+}
+
+a{
+    text-decoration: none
+}
+
+#container{
+    display: flex;
+    flex-direction: column;
+}
+
+.content{
+    flex: 1 1 50%;   
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    margin: 2rem 10rem
+}
+
+.content .menu{
+    flex: 0 0 2rem;
+}
+
+.content .files{
+    flex: 1 1 auto;
+    border-radius: 7px;
+    box-shadow: 0 -2px 3px #ddd inset, 0 2px 3px #ddd inset;
+    background: -webkit-linear-gradient(#fff 80%, #eee);   
+    border: 1px solid #eee;
+    overflow: auto
+}
+
+.header{
+    flex: 0 0 3rem;
+    line-height: 3rem;
+    color: #756;
+    text-align: center;
+}
+
+.footer{
+     flex: 0 0 3rem;
+     text-align: center;
+}
+
+
+/* 文件路径：Begin */
+.menu li{
+    display: inline-block
+}
+
+/*文件路径：End */
+
+
+/* 右键菜单：begin  */
+#right-menu{
+    border: 1px solid #666;
+    border-radius: 0.2rem;
+    padding: 0.5rem;
+}
+
+#right-menu a{
+        line-height: 2rem;
+        color: #756;        
+}
+#right-menu li{
+    border: 0.1rem solid #FFF;
+    border-radius: 0.2rem
+}
+
+#right-menu li:hover{
+    border: 0.1rem solid #AFD;
+    border-radius: 0.2rem
+}
+
+/* 右键菜单：end  */
+
+/*文件和文件夹：begin*/
+
+.files{
+    display: flex;
+    flex-wrap:wrap;    
+}
+
+.files .item{
+    flex: 0 0 25%;
+    text-align: center
+}
+
+
+.files img{  
+    height: 3rem;
+    width: 3rem;
+    cursor: pointer
+}
+/*文件和文件夹：end*/
