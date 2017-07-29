@@ -80,6 +80,8 @@ a{
     border: 1px solid #666;
     border-radius: 0.2rem;
     padding: 0.5rem;
+    z-index: 2;
+    background-color: #FFF;
 }
 
 #right-menu a{
@@ -88,7 +90,8 @@ a{
 }
 #right-menu li{
     border: 0.1rem solid #FFF;
-    border-radius: 0.2rem
+    border-radius: 0.2rem;
+    min-width: 6rem;
 }
 
 #right-menu li:hover{

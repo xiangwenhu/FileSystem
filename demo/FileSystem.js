@@ -4,47 +4,57 @@
         FILE_EXISTED: '文件已存在',
         Directory_EXISTED: '目录已存在',
         ONLY_FILE_WRITE: '只有文件才能写入',
-        NOT_ENTRY: '不是有效的Entry对象'
+        NOT_ENTRY: '不是有效的Entry对象',
+        INVALID_PATH: '文件名不能包含\\/:*?"<>|'
     }
     const DIR_SEPARATOR = '/'
     const DIR_OPEN_BOUND = String.fromCharCode(DIR_SEPARATOR.charCodeAt(0) + 1);
-    // from https://github.com/ebidel/idb.filesystem.js/blob/master/src/idb.filesystem.js
-    // When saving an entry, the fullPath should always lead with a slash and never
-    // end with one (e.g. a directory). Also, resolve '.' and '..' to an absolute
-    // one. This method ensures path is legit!
-    function resolveToFullPath(cwdFullPath, path) {
-        var fullPath = path;
 
-        var relativePath = path[0] != DIR_SEPARATOR;
-        if (relativePath) {
-            fullPath = cwdFullPath + DIR_SEPARATOR + path;
-        }
 
-        // Normalize '.'s,  '..'s and '//'s.
-        var parts = fullPath.split(DIR_SEPARATOR);
-        var finalParts = [];
-        for (var i = 0; i < parts.length; ++i) {
-            var part = parts[i];
-            if (part === '..') {
-                // Go up one level.
-                if (!finalParts.length) {
-                    throw Error('Invalid path');
-                }
-                finalParts.pop();
-            } else if (part === '.') {
-                // Skip over the current directory.
-            } else if (part !== '') {
-                // Eliminate sequences of '/'s as well as possible leading/trailing '/'s.
-                finalParts.push(part);
+    const URLUtil = {
+        _pathBlackList: /[\/\\\:\*\?\"\<\>\|]/,
+        // from https://github.com/ebidel/idb.filesystem.js/blob/master/src/idb.filesystem.js
+        // When saving an entry, the fullPath should always lead with a slash and never
+        // end with one (e.g. a directory). Also, resolve '.' and '..' to an absolute
+        // one. This method ensures path is legit!
+        resolveToFullPath(cwdFullPath, path) {
+            var fullPath = path;
+
+            var relativePath = path[0] != DIR_SEPARATOR;
+            if (relativePath) {
+                fullPath = cwdFullPath + DIR_SEPARATOR + path;
             }
+
+            // Normalize '.'s,  '..'s and '//'s.
+            var parts = fullPath.split(DIR_SEPARATOR);
+            var finalParts = [];
+            for (var i = 0; i < parts.length; ++i) {
+                var part = parts[i];
+                if (part === '..') {
+                    // Go up one level.
+                    if (!finalParts.length) {
+                        throw Error('Invalid path');
+                    }
+                    finalParts.pop();
+                } else if (part === '.') {
+                    // Skip over the current directory.
+                } else if (part !== '') {
+                    // Eliminate sequences of '/'s as well as possible leading/trailing '/'s.
+                    finalParts.push(part);
+                }
+            }
+
+            fullPath = DIR_SEPARATOR + finalParts.join(DIR_SEPARATOR);
+
+            // fullPath is guaranteed to be normalized by construction at this point:
+            // '.'s, '..'s, '//'s will never appear in it.
+
+            return fullPath;
+        },
+
+        isValidatedPath(path) {
+            return this._pathBlackList.test(path) ? true : false
         }
-
-        fullPath = DIR_SEPARATOR + finalParts.join(DIR_SEPARATOR);
-
-        // fullPath is guaranteed to be normalized by construction at this point:
-        // '.'s, '..'s, '//'s will never appear in it.
-
-        return fullPath;
     }
 
     class FileError {
@@ -118,6 +128,10 @@
             this.isDirectory = isDirectory
             this.name = name
             this.fullPath = fullPath
+            this.metadata = {
+                lastModifiedDate: new Date(),
+                size: 0
+            }
         }
 
         /**
@@ -169,8 +183,10 @@
         })
     }
     Entry.copyFrom = function (entry) {
-        return entry.isFile ? new FileEntry(entry.name, entry.fullPath, entry.file) :
+        var en = entry.isFile ? new FileEntry(entry.name, entry.fullPath, entry.file) :
             new DirectoryEntry(entry.name, entry.fullPath)
+        en.metadata = entry.metadata
+        return en
     }
 
     class FileEntry extends Entry {
@@ -236,7 +252,7 @@
         /**
          * 递归删除 done
          */
-        removeRecursively() {
+        remove() {
             return this._dispatch('removeRecursively')
         }
 
@@ -366,12 +382,16 @@
             let file = entry.file
             if (!file) { // 不存在创建
                 file = new FSFile(path.split(DIR_SEPARATOR).pop(), data.size, type, new Date(), data)
+                entry.metadata.lastModifiedDate = file.lastModifiedDate
+                entry.metadata.size = data.size
                 entry.file = file
             } else { //存在更新
                 file.lastModifiedDate = new Date()
                 file.type = type
                 file.size = data.size
                 file.blob = data
+                entry.metadata.lastModifiedDate = file.lastModifiedDate
+                entry.metadata.size = data.size
             }
 
             return this._toPromise('put', entry, entry.fullPath).then(() => entry)
@@ -423,7 +443,7 @@
             if (path === DIR_SEPARATOR) { // 如果获取'/'直接返回当前目录
                 return entry
             }
-            path = resolveToFullPath(entry.fullPath, path)
+            path = URLUtil.resolveToFullPath(entry.fullPath, path)
             return this._toPromise('get', path).then(fe => {
                 if (create === true && exclusive === true && fe) { //创建 && 排他 && 存在
                     throw new FileError({
@@ -439,9 +459,11 @@
                     })
                 } else if (!create && !fe) {// 不创建 && 文件不存在
                     throw NOT_FOUND_ERROR
-                } else if ((!create && fe && fe.isDirectory && getFile) || (!create && fe && fe.isDirectory && getFile)) { // 不创建 && 文件存在 && 文件是目录
+                } else if ((!create && fe && fe.isFile && getFile) || (!create && fe && fe.isDirectory && !getFile)) {
+                    // 不创建 && entry存在 && 是文件 && 获取文件 || 不创建 && entry存在 && 是目录 && 获取目录
                     throw new FileError({
-                        message: FILE_ERROR.Directory_EXISTED
+                        code: 1001,
+                        message: getFile ? FILE_ERROR.FILE_EXISTED : FILE_ERROR.Directory_EXISTED
                     })
                 } else {
                     return Entry.copyFrom(fe)
@@ -549,6 +571,8 @@
     FileSystem._dbName = '_fs_db_'
     FileSystem._storeName = '_fs_store'
 
+    self.FILE_ERROR = FILE_ERROR
+    self.URLUtil = URLUtil
     self.ReaderUtil = ReaderUtil
     self.Entry = Entry
     self.FileEntry = FileEntry
