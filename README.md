@@ -2,6 +2,7 @@
 # 基于indexedDB和promise的文件系统
 <br/>
 ## 如何使用
+<code>
     window.onload = async function () {
 
         let fs = await FileSystem.getInstance()           
