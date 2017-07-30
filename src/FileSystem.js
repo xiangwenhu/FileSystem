@@ -459,11 +459,11 @@
                     })
                 } else if (!create && !fe) {// 不创建 && 文件不存在
                     throw NOT_FOUND_ERROR
-                } else if ((!create && fe && fe.isFile && getFile) || (!create && fe && fe.isDirectory && !getFile)) {
-                    // 不创建 && entry存在 && 是文件 && 获取文件 || 不创建 && entry存在 && 是目录 && 获取目录
+                } else if ((!create && fe && fe.isDirectory && getFile) || (!create && fe && fe.isFile && !getFile)) {
+                    // 不创建 && entry存在 && 是目录 && 获取文件 || 不创建 && entry存在 && 是文件 && 获取目录
                     throw new FileError({
                         code: 1001,
-                        message: getFile ? FILE_ERROR.FILE_EXISTED : FILE_ERROR.Directory_EXISTED
+                        message: getFile ? FILE_ERROR.Directory_EXISTED : FILE_ERROR.FILE_EXISTED
                     })
                 } else {
                     return Entry.copyFrom(fe)

@@ -120,6 +120,7 @@
                 let div = document.createElement('div')
                 div.innerHTML = this.buildEntry(fullPath, isFile)
                 let pel = div.firstChild.querySelector('p')
+                pel.classList.remove('ellipsis')
                 pel.setAttribute('contenteditable', 'true')
                 //pel.setAttribute('autofocus', 'autofocus')
                 return div.firstChild
@@ -382,24 +383,28 @@
                 try {
                     newEntry = await fs.root[method](fullPath, { create: false })
                 } catch (err) {
-                    if (err.code === 1001) { // 目录已已存在
-                        alert(`此目标已包含名为"${name}"的文件${isFile ? '' : '夹'}`)
-                        let parent = el.parentElement
-                        parent.parentElement.removeChild(parent)
-                        entryEntry(fs, currentDirPath) // 防止失败，刷新视图
-                        return
-                    } else if (err.code === 404) {
+                    if (err.code === 404) { // 目录不存在或者其他错误
                         newEntry = await fs.root[method](fullPath)
+                        //模拟blur事件
+                        el.removeAttribute('contenteditable')
+                        var e = document.createEvent('MouseEvent')
+                        e.initEvent('blur', false, false)
+                        el.dispatchEvent(e)
+
                         entryEntry(fs, currentDirPath)
+
                         return
                     }
                     alert(err.message || '未知错误')
                     return
                 }
-                el.removeAttribute('contenteditable')
-                var e = document.createEvent('MouseEvent')
-                e.initEvent('blur', false, false)
-                el.dispatchEvent(e)
+                // 目录已已存在
+                alert(`此目标已包含名为"${name}"的文件${isFile ? '' : '夹'}`)
+                let parent = el.parentElement
+                parent.parentElement.removeChild(parent)
+                entryEntry(fs, currentDirPath) // 防止失败，刷新视图     
+
+
             }
 
             //图片
@@ -478,13 +483,14 @@
                         try {
                             // 不存在不创建， 会返回404
                             fileEntry = await currentDir.getFile(file.name, { create: false })
-                        } catch (err) {
+                        } catch (err) { // 文件不存或者别的错误
                             if (err.code === 404) {
                                 fileEntry = await currentDir.getFile(file.name, { create: true })
                                 fileEntry.write(file, file.type)
                                 continue
                             }
                             alert(err.message || '未知错误')
+                            continue
                         }
                         //文件存在,提示覆盖
                         override = window.confirm(`${file.name}已经存在，是否覆盖？`)
