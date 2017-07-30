@@ -2,7 +2,7 @@
 # 基于indexedDB和promise的文件系统
 <br/>
 ## 如何使用
-<code>
+<pre>
     window.onload = async function () {
 
         let fs = await FileSystem.getInstance()           
@@ -12,7 +12,7 @@
         file.readAsText().then(content => console.log(content))
         
     }
-</code>
+</pre>
 
 <br/>
 ## 文档API
