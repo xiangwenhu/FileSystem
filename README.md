@@ -5,16 +5,16 @@
 
 ## 演示效果截图
 <p>
-    <img src='docs/demo/ss1.jpg' alt='' ></img>
+    <img src='docs/screenshot/ss1.jpg' alt='' ></img>
 </p>
 <p>
-    <img src='docs/demo/ss2.jpg' alt='' ></img>
+    <img src='docs/screenshot/ss2.jpg' alt='' ></img>
 </p>
 <p>
-    <img src='docs/demo/ss3.jpg' alt='' ></img>
+    <img src='docs/screenshot/ss3.jpg' alt='' ></img>
 </p>
 <p>
-    <img src='docs/demo/ss4.jpg' alt='' ></img>
+    <img src='docs/screenshot/ss4.jpg' alt='' ></img>
 </p>
 
 <br/>
