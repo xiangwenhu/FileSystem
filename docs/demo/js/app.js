@@ -145,10 +145,70 @@
         })(_files)
 
 
+    /*  全局方法：Begin  */
+    // 展示目录路径
+    const displayPath = function (fullPath) {
+        _pMenu.innerHTML = pathMenuFactory.buildPathMenu(fullPath)
+    },
+        // 展示目录和文件        
+        displayEntries = function (entries) {
+            _files.innerHTML = entryFactory.buildEntries(entries)
+        },
+
+        // 进入某个目录
+        entryEntry = async function (fs, fullPath) {
+            let dir = await fs.root.getDirectory(fullPath)
+            let entries = await dir.getEntries()
+            displayPath(fullPath)
+            displayEntries(entries)
+        },
+
+        //获得目录全路径
+        getCurrentPath = function () {
+            return [..._pMenu.querySelectorAll('li>a')].pop().getAttribute('data-fullpath')
+        },
+
+        //获得文件或者文件夹当前最大下标
+        getEntrySequence = function () {
+            let names = [..._files.querySelectorAll('figure>p')].map(el => el.innerText.trim()),
+                fileIndex = -1, folderIndex = -1,
+                folderRegex = /新建文件夹（(\d+)）/,
+                fileRegex = /新建文件（(\d+)）/, m
+
+            names.forEach(name => {
+                if (name === '新建文件夹' && folderIndex < 0) {
+                    folderIndex = 0
+                } else if (name === '新建文件' && fileIndex < 0) {
+                    fileIndex = 0
+                } else if ((m = folderRegex.exec(name)) && m.length > 1) {
+                    folderIndex = folderIndex > Number.parseInt(m[1]) ? folderIndex : Number.parseInt(m[1])
+                } else if ((m = fileRegex.exec(name)) && m.length > 1) {
+                    fileIndex = fileIndex > Number.parseInt(m[1]) ? fileIndex : Number.parseInt(m[1])
+                }
+            })
+
+            return {
+                file: fileIndex,
+                folder: folderIndex
+            }
+        },
+
+        setFocus = function (el) {
+            el.focus();
+            var range = document.createRange();
+            range.selectNodeContents(el);
+            range.collapse(false);
+            var sel = window.getSelection();
+            sel.removeAllRanges();
+            sel.addRange(range);
+        }
+
+    /*  全局方法：End  */
+
+
     window.onload = async function () {
 
         fs = await FileSystem.getInstance()
-        console.log(fs)
         var entries = await fs.root.getEntries()
         //展示目录路径
         displayPath(fs.root.fullPath)
@@ -163,55 +223,14 @@
         registerPathEvents(fs)
         //注册拖拽事件
         registerDragEvents(fs)
-    };
 
-    // 展示目录路径
-    function displayPath(fullPath) {
-        _pMenu.innerHTML = pathMenuFactory.buildPathMenu(fullPath)
-    }
-
-    // 展示目录和文件
-    function displayEntries(entries) {
-        _files.innerHTML = entryFactory.buildEntries(entries)
-    }
-
-    // 进入某个目录
-    async function entryEntry(fs, fullPath) {
-        let dir = await fs.root.getDirectory(fullPath)
-        let entries = await dir.getEntries()
-        displayPath(fullPath)
-        displayEntries(entries)
-    }
-
-    //获得目录全路径
-    function getCurrentPath() {
-        return [..._pMenu.querySelectorAll('li>a')].pop().getAttribute('data-fullpath')
-    }
-
-    //获得文件或者文件夹当前最大下标
-    function getEntrySequence() {
-        let names = [..._files.querySelectorAll('figure>p')].map(el => el.innerText.trim()),
-            fileIndex = -1, folderIndex = -1,
-            folderRegex = /新建文件夹（(\d+)）/,
-            fileRegex = /新建文件（(\d+)）/, m
-
-        names.forEach(name => {
-            if (name === '新建文件夹' && folderIndex < 0) {
-                folderIndex = 0
-            } else if (name === '新建文件' && fileIndex < 0) {
-                fileIndex = 0
-            } else if ((m = folderRegex.exec(name)) && m.length > 1) {
-                folderIndex = folderIndex > Number.parseInt(m[1]) ? folderIndex : Number.parseInt(m[1])
-            } else if ((m = fileRegex.exec(name)) && m.length > 1) {
-                fileIndex = fileIndex > Number.parseInt(m[1]) ? fileIndex : Number.parseInt(m[1])
-            }
-        })
-
-        return {
-            file: fileIndex,
-            folder: folderIndex
+        // 如果没有元素，生成默认测试文件夹和文件
+        if (_files.querySelectorAll('figure').length <= 0) {
+            await fs.root.getDirectory('测试文件夹1')
+            await fs.root.getFile('测试文件1')
+            entryEntry(fs, fs.root.fullPath)
         }
-    }
+    };
 
     // 右键菜单相关事件
 
@@ -255,7 +274,7 @@
                 cmd = el.getAttribute('data-cmd'),
                 dPath = getCurrentPath(),
                 newEntryEl, nameEl,
-                entry, isFile
+                entry, isFile, url
             if (cmd) {
                 switch (cmd) {
                     case FSCMD.REFRESH: // 刷新
@@ -267,11 +286,15 @@
                         registerCreateNewEntry(fs, dPath, isFile)
                         break
                     case FSCMD.RENAME: //TODO:: 重命名
-                        if (targetEntryEl && (menuType == rightMenuFactory.menuType.File || menuType == rightMenuFactory.menuType.Folder)) {
-                            let nameEl = targetEntryEl.parentElement.querySelector('p')
-                            nameEl.setAttribute('contenteditable', 'true')
-                            nameEl.focus()
-                        }
+                        alert('未实现')
+                        break;
+                    /*
+                    if (targetEntryEl && (menuType == rightMenuFactory.menuType.File || menuType == rightMenuFactory.menuType.Folder)) {
+                        let nameEl = targetEntryEl.parentElement.querySelector('p')
+                        nameEl.setAttribute('contenteditable', 'true')
+                        nameEl.focus()
+                    }
+                    break; */
                     case FSCMD.DELETE: //删除
                         entry = await getEntryFromContext()
                         if (entry) {
@@ -289,6 +312,34 @@
                             }
                             alert(minfo)
                         }
+                        break
+                    case FSCMD.PREVIEW:
+                        entry = await getEntryFromContext()
+                        if (entry.isFile) {
+                            url = await entry.toURL()
+                            window.open(url)
+                        }
+                        break
+                    case FSCMD.PRINT:
+                        entry = await getEntryFromContext()
+                        if (entry.isFile) {
+                            url = await entry.toURL()
+                            window.open(`print.html?blob=${encodeURIComponent(url)}`)
+                        }
+                        break
+                    case FSCMD.DOWNLOAD:
+                        entry = await getEntryFromContext()
+                        url = await entry.toURL()
+                        var link = document.createElement('a')
+                        link.href = url
+                        link.innerText = '下载'
+                        link.download = entry.name
+                        // link.click() fireFox 失败
+                        // document.body.appendChild(link)
+                        var e = document.createEvent('MouseEvent');
+                        e.initEvent('click', false, false);
+                        link.dispatchEvent(e);
+                        window.URL.revokeObjectURL(link.href)
                         break
                     default:
                         break
@@ -310,11 +361,11 @@
             iconEl = newEntryEl.querySelector('img')
             _files.appendChild(newEntryEl)
 
-            // 文件名
-            nameEl.focus()
-            nameEl.addEventListener('blur', ev => ev.target.removeAttribute('contenteditable'))
+            // 文件名           
+            setFocus(nameEl)
             nameEl.addEventListener('keydown', ev => {
                 if (ev.keyCode === 13) {
+                    ev.target.removeEventListener('blur', createEntry)
                     ev.preventDefault()
                     ev.stopPropagation()
                     createEntry(ev)
@@ -345,7 +396,10 @@
                     alert(err.message || '未知错误')
                     return
                 }
-                el.blur()
+                el.removeAttribute('contenteditable')
+                var e = document.createEvent('MouseEvent')
+                e.initEvent('blur', false, false)
+                el.dispatchEvent(e)
             }
 
             //图片

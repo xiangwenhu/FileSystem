@@ -27,13 +27,13 @@ var options = {
 
 */
 
-
+/*
 gulp.task('compress', function() {
   return gulp.src(['src/utils.js', 'src/FSProvider.js', 'src/IDBProvider.js','src/FileSystem.js'])
     .pipe(concat('FileSystem.js'))
     .pipe(gulp.dest('dist/')).pipe(gulp.dest('test/'));
-});
+}); */
 
-gulp.task('compress2', function() {
-  return gulp.src(['src2/FileSystem.js']).pipe(gulp.dest('demo/'));
+gulp.task('compress', function() {
+  return gulp.src(['src/FileSystem.js']).pipe(gulp.dest('docs/demo'));
 });
