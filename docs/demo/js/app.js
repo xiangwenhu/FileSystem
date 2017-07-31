@@ -385,11 +385,14 @@
                 } catch (err) {
                     if (err.code === 404) { // 目录不存在或者其他错误
                         newEntry = await fs.root[method](fullPath)
-                        //模拟blur事件
-                        el.removeAttribute('contenteditable')
-                        var e = document.createEvent('MouseEvent')
-                        e.initEvent('blur', false, false)
-                        el.dispatchEvent(e)
+
+                        if (ev.type !== 'blur') {
+                            //模拟blur事件
+                            el.removeAttribute('contenteditable')
+                            var e = document.createEvent('MouseEvent')
+                            e.initEvent('blur', false, false)
+                            el.dispatchEvent(e)
+                        }
 
                         entryEntry(fs, currentDirPath)
 
@@ -403,8 +406,6 @@
                 let parent = el.parentElement
                 parent.parentElement.removeChild(parent)
                 entryEntry(fs, currentDirPath) // 防止失败，刷新视图     
-
-
             }
 
             //图片
@@ -465,6 +466,12 @@
 
     //注册拖拽事件
     function registerDragEvents(fs) {
+
+        _files.addEventListener('dragover', function (e) {
+            e.stopPropagation();
+            e.preventDefault();
+        }, false)
+
         _files.addEventListener('drop', async function (e) {
             e.stopPropagation();
             e.preventDefault();
@@ -507,13 +514,6 @@
             entryEntry(fs, fullpath)
         }, false)
 
-        _files.addEventListener('dragenter', function (e) {
-            e.preventDefault();
-        }, false)
-
-        _files.addEventListener('dragover', function (e) {
-            e.preventDefault();
-        }, false)
     }
 
 })()
