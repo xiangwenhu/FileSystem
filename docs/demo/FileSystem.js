@@ -8,48 +8,48 @@
         INVALID_PATH: '文件名不能包含\\/:*?"<>|'
     }
     const DIR_SEPARATOR = '/'
-    const DIR_OPEN_BOUND = String.fromCharCode(DIR_SEPARATOR.charCodeAt(0) + 1);
+    const DIR_OPEN_BOUND = String.fromCharCode(DIR_SEPARATOR.charCodeAt(0) + 1)
 
 
     const URLUtil = {
-        _pathBlackList: /[\/\\\:\*\?\"\<\>\|]/,
+        _pathBlackList: /[/\\:*?"<>|]/,
         // from https://github.com/ebidel/idb.filesystem.js/blob/master/src/idb.filesystem.js
         // When saving an entry, the fullPath should always lead with a slash and never
         // end with one (e.g. a directory). Also, resolve '.' and '..' to an absolute
         // one. This method ensures path is legit!
         resolveToFullPath(cwdFullPath, path) {
-            var fullPath = path;
+            var fullPath = path
 
-            var relativePath = path[0] != DIR_SEPARATOR;
+            var relativePath = path[0] != DIR_SEPARATOR
             if (relativePath) {
-                fullPath = cwdFullPath + DIR_SEPARATOR + path;
+                fullPath = cwdFullPath + DIR_SEPARATOR + path
             }
 
             // Normalize '.'s,  '..'s and '//'s.
-            var parts = fullPath.split(DIR_SEPARATOR);
-            var finalParts = [];
+            var parts = fullPath.split(DIR_SEPARATOR)
+            var finalParts = []
             for (var i = 0; i < parts.length; ++i) {
-                var part = parts[i];
+                var part = parts[i]
                 if (part === '..') {
                     // Go up one level.
                     if (!finalParts.length) {
-                        throw Error('Invalid path');
+                        throw Error('Invalid path')
                     }
-                    finalParts.pop();
+                    finalParts.pop()
                 } else if (part === '.') {
                     // Skip over the current directory.
                 } else if (part !== '') {
                     // Eliminate sequences of '/'s as well as possible leading/trailing '/'s.
-                    finalParts.push(part);
+                    finalParts.push(part)
                 }
             }
 
-            fullPath = DIR_SEPARATOR + finalParts.join(DIR_SEPARATOR);
+            fullPath = DIR_SEPARATOR + finalParts.join(DIR_SEPARATOR)
 
             // fullPath is guaranteed to be normalized by construction at this point:
             // '.'s, '..'s, '//'s will never appear in it.
 
-            return fullPath;
+            return fullPath
         },
 
         isValidatedPath(path) {
@@ -141,12 +141,12 @@
             return this._dispatch('getMetadata')
         }
 
-        moveTo(parent, newName) {
+        moveTo() {
             throw NOT_IMPLEMENTED_ERROR
             //this._dispatch('moveTo', [...arguments])
         }
 
-        copyTo(parent, newName) {
+        copyTo() {
             throw NOT_IMPLEMENTED_ERROR
             // this._dispatch('copyTo', [...arguments])
         }
@@ -171,15 +171,15 @@
     }
 
     Entry.prototype._dispatch = function (method, ...args) {
-        return new Promise((resolve) => {
+        return new Promise(resolve => {
             if (FileSystem._instance) {
-                return resolve(FileSystem._instance[method].call(FileSystem._instance, this, ...args))
-            } else {
-                FileSystem.getInstance().then(fs => {
-                    FileSystem._instance = fs
-                    return resolve(FileSystem._instance[method].call(fs, this, ...args))
-                })
+                return resolve(FileSystem._instance[method](this, ...args))
             }
+            return FileSystem.getInstance().then(fs => {
+                FileSystem._instance = fs
+                return resolve(FileSystem._instance[method](this, ...args))
+            })
+
         })
     }
     Entry.copyFrom = function (entry) {
