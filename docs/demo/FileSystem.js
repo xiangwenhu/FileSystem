@@ -286,14 +286,14 @@
             }
             return new Promise((resolve, reject) => {
                 let request = self.indexedDB.open(FileSystem._dbName, dbVersion)
-                request.onerror = event => {
+                request.onerror = () => {
                     return reject(null)
                 }
-                request.onsuccess = event => {
+                request.onsuccess = () => {
                     let db = request.result
                     // 老版本，新版本是onupgradeneeded
                     if (db.setVersion && db.version !== dbVersion) {
-                        var setVersion = db.setVersion(dbVersion);
+                        var setVersion = db.setVersion(dbVersion)
                         setVersion.onsuccess = function () {
                             db.createObjectStore(this._storeName)
                             this._instance = new FileSystem()
@@ -309,6 +309,7 @@
                         FileSystem._instance = this._instance
                         return resolve(this._instance)
                     }
+                    return null
                 }
                 request.onupgradeneeded = event => {
                     event.target.result.createObjectStore(this._storeName)
@@ -333,8 +334,9 @@
                     let trans = this.transaction
                     // 获得请求
                     let req = trans.objectStore(this._storeName)[method](...args)
-                    // 请求成功
-                    if (['openCursor', 'openKeyCursor'].indexOf(method) >= 0 && suc) { //游标
+                    //游标
+                    if (['openCursor', 'openKeyCursor'].indexOf(method) >= 0 && suc) {
+
                         req.onsuccess = function (event) {
                             suc(event)
                         }
@@ -346,15 +348,21 @@
                         }
                     }
                     else {
-                        req.onsuccess = event => resolve(event.target.result)
+                        //req.onsuccess = event => resolve(event.target.result)
+                        trans.oncomplete = function () {
+                            return resolve(req.result)
+                        }
+                        trans.onsuccess = function () {
+                            return resolve(req.result)
+                        }
                     }
                     // 请求失败
-                    req.onerror = event => reject(req.error)
+                    req.onerror = () => reject(req.error)
                     // 事务失败
-                    trans.onerror = event => reject(trans.error)
+                    trans.onerror = () => reject(trans.error)
                 })
             } catch (err) {
-                Promise.reject(err)
+                return Promise.reject(err)
             }
         }
 
@@ -380,12 +388,14 @@
                 data = new Blob([content], { type })
             }
             let file = entry.file
-            if (!file) { // 不存在创建
-                file = new FSFile(path.split(DIR_SEPARATOR).pop(), data.size, type, new Date(), data)
+            if (!file) {
+                // 不存在创建
+                file = new FSFile(entry.fullPath.split(DIR_SEPARATOR).pop(), data.size, type, new Date(), data)
                 entry.metadata.lastModifiedDate = file.lastModifiedDate
                 entry.metadata.size = data.size
                 entry.file = file
-            } else { //存在更新
+            } else {
+                //存在更新
                 file.lastModifiedDate = new Date()
                 file.type = type
                 file.size = data.size
@@ -418,7 +428,7 @@
 
         removeRecursively(entry) {
             this._checkEntry(entry)
-            var range = IDBKeyRange.bound(entry.fullPath, entry.fullPath + DIR_OPEN_BOUND, false, true);
+            var range = IDBKeyRange.bound(entry.fullPath, entry.fullPath + DIR_OPEN_BOUND, false, true)
             return this._toPromise('delete', range).then(() => true)
         }
 
@@ -440,16 +450,19 @@
          */
         getEntry(entry, path, { create, exclusive = false }, getFile = true) {
             this._checkEntry(entry)
-            if (path === DIR_SEPARATOR) { // 如果获取'/'直接返回当前目录
+            if (path === DIR_SEPARATOR) {
+                // 如果获取'/'直接返回当前目录
                 return entry
             }
             path = URLUtil.resolveToFullPath(entry.fullPath, path)
             return this._toPromise('get', path).then(fe => {
-                if (create === true && exclusive === true && fe) { //创建 && 排他 && 存在
+                if (create === true && exclusive === true && fe) {
+                    //创建 && 排他 && 存在
                     throw new FileError({
                         message: getFile ? FILE_ERROR.FILE_EXISTED : FILE_ERROR.Directory_EXISTED
                     })
-                } else if (create === true && !fe) { //创建 && 文件不存在
+                } else if (create === true && !fe) {
+                    //创建 && 文件不存在
                     let name = path.split(DIR_SEPARATOR).pop(),
                         newEntry = getFile ? new FileEntry(name, path) : new DirectoryEntry(name, path),
                         fileE = getFile ? new FSFile(name, 0, null, new Date(), null) : null
@@ -457,9 +470,10 @@
                     return this._toPromise('put', newEntry, newEntry.fullPath).then(() => {
                         return Entry.copyFrom(newEntry)
                     })
-                } else if (!create && !fe) {// 不创建 && 文件不存在
+                } else if (!create && !fe) {
+                    // 不创建 && 文件不存在
                     throw NOT_FOUND_ERROR
-                } else if ((!create && fe && fe.isDirectory && getFile) || (!create && fe && fe.isFile && !getFile)) {
+                } else if (!create && fe && fe.isDirectory && getFile || !create && fe && fe.isFile && !getFile) {
                     // 不创建 && entry存在 && 是目录 && 获取文件 || 不创建 && entry存在 && 是文件 && 获取目录
                     throw new FileError({
                         code: 1001,
@@ -478,7 +492,8 @@
          */
         getParent(entry) {
             this._checkEntry(entry)
-            if (entry.fullPath === DIR_SEPARATOR) { // 已经是根目录
+            // 已经是根目录
+            if (entry.fullPath === DIR_SEPARATOR) {
                 return entry
             }
             let parentFullPath = entry.fullPath.substring(0, entry.fullPath.lastIndexOf(DIR_SEPARATOR))
@@ -499,24 +514,24 @@
             if (entry.fullPath != DIR_SEPARATOR && entry.fullPath != '') {
                 //console.log(fullPath + '/', fullPath + DIR_OPEN_BOUND)
                 range = IDBKeyRange.bound(
-                    entry.fullPath + DIR_SEPARATOR, entry.fullPath + DIR_OPEN_BOUND, false, true);
+                    entry.fullPath + DIR_SEPARATOR, entry.fullPath + DIR_OPEN_BOUND, false, true)
             }
-            //TODO::为嘛用游标？
+            //TODO::游标？
             let valPartsLen, fullPathPartsLen
             return this._toPromise('openCursor', range, function (event) {
-                var cursor = event.target.result;
+                var cursor = event.target.result
                 if (cursor) {
-                    var val = cursor.value;
-                    valPartsLen = val.fullPath.split(DIR_SEPARATOR).length;
-                    fullPathPartsLen = entry.fullPath.split(DIR_SEPARATOR).length;
+                    var val = cursor.value
+                    valPartsLen = val.fullPath.split(DIR_SEPARATOR).length
+                    fullPathPartsLen = entry.fullPath.split(DIR_SEPARATOR).length
                     if (val.fullPath !== DIR_SEPARATOR) {
                         // 区分根目录和非根目录
-                        if ((entry.fullPath === DIR_SEPARATOR && valPartsLen < fullPathPartsLen + 1) ||
-                            (entry.fullPath !== DIR_SEPARATOR && valPartsLen === fullPathPartsLen + 1)) {
-                            results.push(val.isFile ? new FileEntry(val.name, val.fullPath, val.file) : new DirectoryEntry(val.name, val.fullPath));
+                        if (entry.fullPath === DIR_SEPARATOR && valPartsLen < fullPathPartsLen + 1 ||
+                            entry.fullPath !== DIR_SEPARATOR && valPartsLen === fullPathPartsLen + 1) {
+                            results.push(val.isFile ? new FileEntry(val.name, val.fullPath, val.file) : new DirectoryEntry(val.name, val.fullPath))
                         }
                     }
-                    cursor['continue']();
+                    cursor['continue']()
                 }
             }).then(() => results)
         }

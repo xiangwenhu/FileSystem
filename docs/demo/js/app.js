@@ -158,8 +158,12 @@
 
         // 进入某个目录
         entryEntry = async function (fs, fullPath) {
+            console.log(`enter ${fullPath}`)
+            let start = new Date();
             let dir = await fs.root.getDirectory(fullPath)
             let entries = await dir.getEntries()
+            console.log('timing:' + (new Date() - start) / 1000 + 's')
+            console.log('')
             displayPath(fullPath)
             displayEntries(entries)
         },
@@ -492,8 +496,12 @@
                             fileEntry = await currentDir.getFile(file.name, { create: false })
                         } catch (err) { // 文件不存或者别的错误
                             if (err.code === 404) {
+                                console.log('写入' + file.name + ' size', (file.size / 1024 / 1024).toFixed(2) + 'M')
+                                var start = new Date()
                                 fileEntry = await currentDir.getFile(file.name, { create: true })
-                                fileEntry.write(file, file.type)
+                                await fileEntry.write(file, file.type)
+                                console.log('timing:' + (new Date() - start) / 1000 + 's')
+                                console.log('')
                                 continue
                             }
                             alert(err.message || '未知错误')

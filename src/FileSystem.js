@@ -348,7 +348,14 @@
                         }
                     }
                     else {
-                        req.onsuccess = event => resolve(event.target.result)
+                        // 如果是onsuccess 就返回，只表示请求成功，当大文件存储的时候，并不是已经写入完毕才返回
+                        //req.onsuccess = event => resolve(event.target.result)
+                        trans.oncomplete = function () {
+                            return resolve(req.result)
+                        }
+                        trans.onsuccess = function () {
+                            return resolve(req.result)
+                        }
                     }
                     // 请求失败
                     req.onerror = () => reject(req.error)
