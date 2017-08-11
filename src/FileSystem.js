@@ -10,6 +10,29 @@
     const DIR_SEPARATOR = '/'
     const DIR_OPEN_BOUND = String.fromCharCode(DIR_SEPARATOR.charCodeAt(0) + 1)
 
+    /**
+     * https://segmentfault.com/q/1010000007499416
+     * Promise for forEach
+     * @param {*数组} arr 
+     * @param {*回调} cb(val)返回的应该是Promise 
+     * @param {*是否需要执行结果集} needResults
+     */
+    const promiseForEach = function promiseForEach(arr, cb, needResults) {
+        // lastResult参数暂无用
+        let realResult = [], lastResult
+        let result = Promise.resolve()
+        Array.from(arr).forEach((val, index) => {
+            result = result.then(() => {
+                return cb(val, index).then((res) => {
+                    lastResult = res
+                    needResults && realResult.push(res)
+                })
+            })
+        })
+
+        return needResults ? result.then(() => realResult) : result
+    }
+
 
     const URLUtil = {
         _pathBlackList: /[/\\:*?"<>|]/,
@@ -262,6 +285,10 @@
         getEntries() {
             return this._dispatch('getEntries')
         }
+
+        ensureDirectory(path) {
+            return this._dispatch('ensureDirectory', path)
+        }
     }
 
     class FileSystem {
@@ -474,7 +501,7 @@
                 } else if (!create && !fe) {
                     // 不创建 && 文件不存在
                     throw NOT_FOUND_ERROR
-                } else if (!create && fe && fe.isDirectory && getFile || !create && fe && fe.isFile && !getFile) {
+                } else if ( fe && fe.isDirectory && getFile || fe && fe.isFile && !getFile) {
                     // 不创建 && entry存在 && 是目录 && 获取文件 || 不创建 && entry存在 && 是文件 && 获取目录
                     throw new FileError({
                         code: 1001,
@@ -571,9 +598,28 @@
             }
         }
 
-        //TODO::递归检查和创建DirectoryEntry
-        _ensureDirectory(entry) {
-            throw NOT_IMPLEMENTED_ERROR
+        /**
+         * 
+         * @param {Entry} entry 
+         * @param {path} path 
+         */
+        ensureDirectory(entry, path) {
+            this._checkEntry(entry)
+            if (path === DIR_SEPARATOR) {
+                // 如果获取'/'直接返回当前目录
+                return entry
+            }
+            let rPath = URLUtil.resolveToFullPath(entry.fullPath, path)
+            if (rPath.length < path.length) {
+                return entry
+            }
+            path = rPath.substring(entry.fullPath.length)
+            let dirs = path.split(DIR_SEPARATOR)
+            return promiseForEach(dirs, (dir, index) => {
+                return entry.getDirectory(dirs.slice(0, index + 1).join('/'), { create: true })
+            }, true).then((dirEntes) => {
+                return dirEntes && dirEntes[dirEntes.length - 1]
+            }).catch(err => { throw err })
         }
     }
 

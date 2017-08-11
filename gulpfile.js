@@ -1,39 +1,32 @@
-var gulp = require('gulp');
-var UglifyJS = require('uglify-es')
-var concat = require('gulp-concat');
+var gulp = require('gulp'),
+    babel = require('gulp-babel'),
+    rename = require('gulp-rename'),
+    uglify = require('gulp-uglify'),
+    pump = require('pump');
 
-
-
-/*
-var options = {
-  parse: {
-
-  },
-  mangle: {
-    properties: true,
-    toplevel: true,
-    keep_fnames: true,
-    reserved: ['FileSystem', 'requestFileSystem', 'indexedDB'],
-  }
-
-},
-  code =
-    {
-      "utils.js": fs.readFileSync("src/utils.js", "utf8"),
-      "FSProvider.js": fs.readFileSync("src/FSProvider.js", "utf8"),
-      "IDBProvider.js": fs.readFileSync("src/IDBProvider.js", "utf8"),
-      "FileSystem.js": fs.readFileSync("src/FileSystem.js", "utf8")
-    }
-
-*/
-
-/*
-gulp.task('compress', function() {
-  return gulp.src(['src/utils.js', 'src/FSProvider.js', 'src/IDBProvider.js','src/FileSystem.js'])
-    .pipe(concat('FileSystem.js'))
-    .pipe(gulp.dest('dist/')).pipe(gulp.dest('test/'));
-}); */
-
-gulp.task('compress', function() {
-  return gulp.src(['src/FileSystem.js']).pipe(gulp.dest('docs/demo'));
+gulp.task('default', function () {
+    gulp.src('src/FileSystem.js')
+        .pipe(gulp.dest('dist'))
+        .pipe(gulp.dest('docs/demo'))
+        .pipe(babel({
+            presets: ['es2015']
+        }))
+        .pipe(rename('FileSystem.ES5.js'))
+        .pipe(gulp.dest('dist'))
+        .pipe(gulp.dest('docs/demo'))
+        .pipe(rename('FileSystem.ES5.min.js'))
+        .pipe(gulp.dest('dist'))
+        .pipe(gulp.dest('docs/demo'))
+});
+gulp.task('watch', function () {
+    gulp.watch('src/FileSystem.js', ['ES6ToES5'])
+});
+gulp.task('compress', function (cb) {
+    pump([
+        gulp.src('dist/FileSystem.ES5.min.js'),
+        uglify(),
+        gulp.dest('dist')
+    ],
+        cb
+    );
 });
