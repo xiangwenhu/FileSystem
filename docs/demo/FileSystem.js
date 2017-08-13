@@ -36,7 +36,7 @@
 
 
     const URLUtil = {
-        _pathBlackList: /[/\\:*?"<>|]/,
+        _pathBlackList: /[\\:*?"<>|]/,
         // from https://github.com/ebidel/idb.filesystem.js/blob/master/src/idb.filesystem.js
         // When saving an entry, the fullPath should always lead with a slash and never
         // end with one (e.g. a directory). Also, resolve '.' and '..' to an absolute
@@ -262,7 +262,7 @@
          */
         getFile(path, options = { create: true, exclusive: false }) {
             if (!URLUtil.isValidatedPath(path)) {
-               return Promise.reject(FILE_ERROR.INVALID_PATH)
+                return Promise.reject(FILE_ERROR.INVALID_PATH)
             }
             return this._dispatch('getFile', path, options)
         }
@@ -274,7 +274,7 @@
          */
         getDirectory(path, options = { create: true, exclusive: false }) {
             if (!URLUtil.isValidatedPath(path)) {
-              return  Promise.reject(FILE_ERROR.INVALID_PATH)
+                return Promise.reject(FILE_ERROR.INVALID_PATH)
             }
             return this._dispatch('getDirectory', path, options)
         }
