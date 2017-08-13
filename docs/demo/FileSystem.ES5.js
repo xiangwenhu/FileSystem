@@ -13,6 +13,7 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
 (function () {
 
     var FILE_ERROR = {
+        INITIALIZE_FAILED: '文件系统初始化失败',
         FILE_EXISTED: '文件已存在',
         Directory_EXISTED: '目录已存在',
         ONLY_FILE_WRITE: '只有文件才能写入',
@@ -89,7 +90,7 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
             return fullPath;
         },
         isValidatedPath: function isValidatedPath(path) {
-            return this._pathBlackList.test(path) ? true : false;
+            return this._pathBlackList.test(path) ? false : true;
         }
     };
 
@@ -348,6 +349,9 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
             value: function getFile(path) {
                 var options = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : { create: true, exclusive: false };
 
+                if (!URLUtil.isValidatedPath(path)) {
+                    return Promise.reject(FILE_ERROR.INVALID_PATH);
+                }
                 return this._dispatch('getFile', path, options);
             }
 
@@ -362,6 +366,9 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
             value: function getDirectory(path) {
                 var options = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : { create: true, exclusive: false };
 
+                if (!URLUtil.isValidatedPath(path)) {
+                    return Promise.reject(FILE_ERROR.INVALID_PATH);
+                }
                 return this._dispatch('getDirectory', path, options);
             }
 
@@ -406,6 +413,8 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
             this._storeName = FileSystem._storeName;
             // root
             this.root = null;
+            // 0 未初始化， 1初始化中
+            this._state = 0;
         }
 
         _createClass(FileSystem, [{
@@ -770,9 +779,28 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
                 if (this._instance) {
                     Promise.resolve(this._instance);
                 }
+                //确保同一实例
+                if (this._state === 1) {
+                    return new Promise(function (resolve, reject) {
+                        var times = 0;
+                        var ticket = setInterval(function () {
+                            if (_this6._instance && _this6._state == 2) {
+                                times++;
+                                clearInterval(ticket);
+                                return resolve(_this6._instance);
+                            }
+                            if (times > 10) {
+                                return reject(FILE_ERROR.INITIALIZE_FAILED);
+                            }
+                        }, 5);
+                    });
+                }
+                //标记在初始化中
+                this._state = 1;
                 return new Promise(function (resolve, reject) {
                     var request = self.indexedDB.open(FileSystem._dbName, dbVersion);
                     request.onerror = function () {
+                        _this6._state = 0;
                         return reject(null);
                     };
                     request.onsuccess = function () {
@@ -785,14 +813,14 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
                                 this._instance = new FileSystem();
                                 this._instance._db = request.result;
                                 this._instance.root = new DirectoryEntry('/', '/');
-                                FileSystem._instance = this._instance;
+                                this._state = 2;
                                 return resolve(this._instance);
                             };
                         } else {
                             _this6._instance = new FileSystem();
                             _this6._instance._db = request.result;
                             _this6._instance.root = new DirectoryEntry('/', '/');
-                            FileSystem._instance = _this6._instance;
+                            _this6._state = 2;
                             return resolve(_this6._instance);
                         }
                         return null;

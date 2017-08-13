@@ -1,11 +1,12 @@
 (function () {
 
     const FILE_ERROR = {
+        INITIALIZE_FAILED: '文件系统初始化失败',
         FILE_EXISTED: '文件已存在',
         Directory_EXISTED: '目录已存在',
         ONLY_FILE_WRITE: '只有文件才能写入',
         NOT_ENTRY: '不是有效的Entry对象',
-        INVALID_PATH: '文件名不能包含\\/:*?"<>|'
+        INVALID_PATH: '文件或者目录不能包含\\/:*?"<>|'
     }
     const DIR_SEPARATOR = '/'
     const DIR_OPEN_BOUND = String.fromCharCode(DIR_SEPARATOR.charCodeAt(0) + 1)
@@ -76,7 +77,7 @@
         },
 
         isValidatedPath(path) {
-            return this._pathBlackList.test(path) ? true : false
+            return this._pathBlackList.test(path) ? false : true
         }
     }
 
@@ -260,6 +261,9 @@
          * @param {Object} options  create:是否创建 ， exclusive 排他
          */
         getFile(path, options = { create: true, exclusive: false }) {
+            if (!URLUtil.isValidatedPath(path)) {
+               return Promise.reject(FILE_ERROR.INVALID_PATH)
+            }
             return this._dispatch('getFile', path, options)
         }
 
@@ -269,6 +273,9 @@
          * @param {Object} options 
          */
         getDirectory(path, options = { create: true, exclusive: false }) {
+            if (!URLUtil.isValidatedPath(path)) {
+              return  Promise.reject(FILE_ERROR.INVALID_PATH)
+            }
             return this._dispatch('getDirectory', path, options)
         }
 
@@ -302,6 +309,8 @@
             this._storeName = FileSystem._storeName
             // root
             this.root = null
+            // 0 未初始化， 1初始化中
+            this._state = 0
         }
 
         static getInstance(dbVersion = 1.0) {
@@ -311,9 +320,28 @@
             if (this._instance) {
                 Promise.resolve(this._instance)
             }
+            //确保同一实例
+            if (this._state === 1) {
+                return new Promise((resolve, reject) => {
+                    let times = 0
+                    let ticket = setInterval(() => {
+                        if (this._instance && this._state == 2) {
+                            times++
+                            clearInterval(ticket)
+                            return resolve(this._instance)
+                        }
+                        if (times > 10) {
+                            return reject(FILE_ERROR.INITIALIZE_FAILED)
+                        }
+                    }, 5)
+                })
+            }
+            //标记在初始化中
+            this._state = 1
             return new Promise((resolve, reject) => {
                 let request = self.indexedDB.open(FileSystem._dbName, dbVersion)
                 request.onerror = () => {
+                    this._state = 0
                     return reject(null)
                 }
                 request.onsuccess = () => {
@@ -326,14 +354,14 @@
                             this._instance = new FileSystem()
                             this._instance._db = request.result
                             this._instance.root = new DirectoryEntry('/', '/')
-                            FileSystem._instance = this._instance
+                            this._state = 2
                             return resolve(this._instance)
                         }
                     } else {
                         this._instance = new FileSystem()
                         this._instance._db = request.result
                         this._instance.root = new DirectoryEntry('/', '/')
-                        FileSystem._instance = this._instance
+                        this._state = 2
                         return resolve(this._instance)
                     }
                     return null
@@ -501,7 +529,7 @@
                 } else if (!create && !fe) {
                     // 不创建 && 文件不存在
                     throw NOT_FOUND_ERROR
-                } else if ( fe && fe.isDirectory && getFile || fe && fe.isFile && !getFile) {
+                } else if (fe && fe.isDirectory && getFile || fe && fe.isFile && !getFile) {
                     // 不创建 && entry存在 && 是目录 && 获取文件 || 不创建 && entry存在 && 是文件 && 获取目录
                     throw new FileError({
                         code: 1001,
