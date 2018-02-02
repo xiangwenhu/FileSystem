@@ -25,11 +25,12 @@ a{
     flex-direction: column;
 }
 .content{
-    flex: 1 1 50%;   
+    flex: 1 1 80%;   
     height: 100%;
     display: flex;
     flex-direction: column;
-    margin: 0rem 10rem
+    margin: 0rem 4.5rem;
+    min-width: 550px;
 }
 .content .menu{
     flex: 0 0 2rem;
@@ -48,7 +49,7 @@ a{
     line-height: 5rem;
     color: #756;
     text-align: center;
-    font-size: 2rem;
+    font-size: 1.2rem;
     font-weight: 500
 }
 .footer{

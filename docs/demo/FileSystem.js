@@ -1,5 +1,4 @@
 (function () {
-
     const FILE_ERROR = {
         INITIALIZE_FAILED: '文件系统初始化失败',
         FILE_EXISTED: '文件已存在',
@@ -30,10 +29,8 @@
                 })
             })
         })
-
         return needResults ? result.then(() => realResult) : result
     }
-
 
     const URLUtil = {
         _pathBlackList: /[\\:*?"<>|]/,
@@ -102,7 +99,6 @@
             this.blob = blob
         }
     }
-
     const ReaderUtil = {
         read(blob, method) {
             return new Promise((resolve, reject) => {
@@ -146,7 +142,6 @@
         NOT_SUPPORTED = new Error('So Low , So Young')
 
     class Entry {
-
         constructor(isFile = true, isDirectory = false, name, fullPath) {
             this.isFile = isFile
             this.isDirectory = isDirectory
@@ -218,7 +213,6 @@
             super(true, false, name, fullPath)
             this.file = file
         }
-
         /**
          * FileEntry写入数据 done
          * @param {Blob|String|BufferArray} content 
@@ -299,7 +293,6 @@
     }
 
     class FileSystem {
-
         constructor() {
             // DB
             this._db = null
@@ -539,7 +532,6 @@
                     return Entry.copyFrom(fe)
                 }
             })
-
         }
 
         /**

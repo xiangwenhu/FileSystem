@@ -11,7 +11,6 @@ function _inherits(subClass, superClass) { if (typeof superClass !== "function" 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
 (function () {
-
     var FILE_ERROR = {
         INITIALIZE_FAILED: '文件系统初始化失败',
         FILE_EXISTED: '文件已存在',
@@ -43,7 +42,6 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
                 });
             });
         });
-
         return needResults ? result.then(function () {
             return realResult;
         }) : result;
@@ -279,7 +277,6 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
             _this2.file = file;
             return _this2;
         }
-
         /**
          * FileEntry写入数据 done
          * @param {Blob|String|BufferArray} content 
