@@ -18,13 +18,11 @@
      * @param {*是否需要执行结果集} needResults
      */
     const promiseForEach = function promiseForEach(arr, cb, needResults) {
-        // lastResult参数暂无用
-        let realResult = [], lastResult
+        let realResult = []
         let result = Promise.resolve()
         Array.from(arr).forEach((val, index) => {
             result = result.then(() => {
                 return cb(val, index).then((res) => {
-                    lastResult = res
                     needResults && realResult.push(res)
                 })
             })
@@ -139,7 +137,7 @@
             code: 404,
             message: '未找到'
         }),
-        NOT_SUPPORTED = new Error('So Low , So Young')
+        NOT_SUPPORTED = new Error('')
 
     class Entry {
         constructor(isFile = true, isDirectory = false, name, fullPath) {
@@ -521,7 +519,7 @@
                     })
                 } else if (!create && !fe) {
                     // 不创建 && 文件不存在
-                    throw NOT_FOUND_ERROR
+                    return null
                 } else if (fe && fe.isDirectory && getFile || fe && fe.isFile && !getFile) {
                     // 不创建 && entry存在 && 是目录 && 获取文件 || 不创建 && entry存在 && 是文件 && 获取目录
                     throw new FileError({
@@ -564,12 +562,11 @@
                 range = IDBKeyRange.bound(
                     entry.fullPath + DIR_SEPARATOR, entry.fullPath + DIR_OPEN_BOUND, false, true)
             }
-            //TODO::游标？
             let valPartsLen, fullPathPartsLen
             return this._toPromise('openCursor', range, function (event) {
-                var cursor = event.target.result
+                const cursor = event.target.result
                 if (cursor) {
-                    var val = cursor.value
+                    const val = cursor.value
                     valPartsLen = val.fullPath.split(DIR_SEPARATOR).length
                     fullPathPartsLen = entry.fullPath.split(DIR_SEPARATOR).length
                     if (val.fullPath !== DIR_SEPARATOR) {
@@ -597,7 +594,7 @@
             if (entry.file && entry.file.blob) {
                 return ReaderUtil.read(entry.file.blob, method, ...args)
             }
-            throw NOT_FOUND_ERROR
+            return null
         }
 
         getBlob(entry) {
@@ -605,7 +602,7 @@
             if (entry.file && entry.file.blob) {
                 return entry.file.blob
             }
-            throw NOT_FOUND_ERROR
+            return null
         }
 
         /**

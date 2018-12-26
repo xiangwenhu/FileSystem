@@ -384,32 +384,27 @@
                     fullPath = (currentDirPath === '/' ? '' : currentDirPath) + '/' + name,
                     method = isFile ? 'getFile' : 'getDirectory'
 
-                try {
-                    newEntry = await fs.root[method](fullPath, { create: false })
-                } catch (err) {
-                    if (err.code === 404) { // 目录不存在或者其他错误
-                        newEntry = await fs.root[method](fullPath)
 
-                        if (ev.type !== 'blur') {
-                            //模拟blur事件
-                            el.removeAttribute('contenteditable')
-                            var e = document.createEvent('MouseEvent')
-                            e.initEvent('blur', false, false)
-                            el.dispatchEvent(e)
-                        }
-
-                        entryEntry(fs, currentDirPath)
-
-                        return
-                    }
-                    alert(err.message || '未知错误')
-                    return
+                newEntry = await fs.root[method](fullPath, { create: false })
+                if (newEntry) {
+                    // 目录已已存在
+                    alert(`此目标已包含名为"${name}"的文件${isFile ? '' : '夹'}`)
+                    let parent = el.parentElement
+                    parent.parentElement.removeChild(parent)
+                    entryEntry(fs, currentDirPath) // 防止失败，刷新视图 
                 }
-                // 目录已已存在
-                alert(`此目标已包含名为"${name}"的文件${isFile ? '' : '夹'}`)
-                let parent = el.parentElement
-                parent.parentElement.removeChild(parent)
-                entryEntry(fs, currentDirPath) // 防止失败，刷新视图     
+
+
+                newEntry = await fs.root[method](fullPath)
+                if (ev.type !== 'blur') {
+                    //模拟blur事件
+                    el.removeAttribute('contenteditable')
+                    var e = document.createEvent('MouseEvent')
+                    e.initEvent('blur', false, false)
+                    el.dispatchEvent(e)
+                }
+                entryEntry(fs, currentDirPath)
+                return
             }
 
             //图片

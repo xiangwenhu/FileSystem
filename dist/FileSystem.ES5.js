@@ -30,14 +30,11 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
      * @param {*是否需要执行结果集} needResults
      */
     var promiseForEach = function promiseForEach(arr, cb, needResults) {
-        // lastResult参数暂无用
-        var realResult = [],
-            lastResult = void 0;
+        var realResult = [];
         var result = Promise.resolve();
         Array.from(arr).forEach(function (val, index) {
             result = result.then(function () {
                 return cb(val, index).then(function (res) {
-                    lastResult = res;
                     needResults && realResult.push(res);
                 });
             });
@@ -166,7 +163,7 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
         code: 404,
         message: '未找到'
     }),
-        NOT_SUPPORTED = new Error('So Low , So Young');
+        NOT_SUPPORTED = new Error('');
 
     var Entry = function () {
         function Entry() {
@@ -616,7 +613,7 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
                         });
                     } else if (!create && !fe) {
                         // 不创建 && 文件不存在
-                        throw NOT_FOUND_ERROR;
+                        return null;
                     } else if (fe && fe.isDirectory && getFile || fe && fe.isFile && !getFile) {
                         // 不创建 && entry存在 && 是目录 && 获取文件 || 不创建 && entry存在 && 是文件 && 获取目录
                         throw new FileError({
@@ -664,7 +661,6 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
                     //console.log(fullPath + '/', fullPath + DIR_OPEN_BOUND)
                     range = IDBKeyRange.bound(entry.fullPath + DIR_SEPARATOR, entry.fullPath + DIR_OPEN_BOUND, false, true);
                 }
-                //TODO::游标？
                 var valPartsLen = void 0,
                     fullPathPartsLen = void 0;
                 return this._toPromise('openCursor', range, function (event) {
@@ -705,7 +701,7 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
 
                     return ReaderUtil.read.apply(ReaderUtil, [entry.file.blob, method].concat(args));
                 }
-                throw NOT_FOUND_ERROR;
+                return null;
             }
         }, {
             key: 'getBlob',
@@ -714,7 +710,7 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
                 if (entry.file && entry.file.blob) {
                     return entry.file.blob;
                 }
-                throw NOT_FOUND_ERROR;
+                return null;
             }
 
             /**
