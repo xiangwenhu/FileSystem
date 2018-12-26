@@ -82,6 +82,7 @@
             this.message = message
         }
     }
+
     class Metadata {
         constructor(modificationTime, size) {
             this.modificationTime = modificationTime
@@ -138,6 +139,24 @@
             message: '未找到'
         }),
         NOT_SUPPORTED = new Error('')
+
+
+    const Utils = {
+        contentToBlob(content, type = 'text/plain') {
+            let blob
+            // 不是blob，转为blob
+            if (content instanceof Blob) {
+                blob = content
+            } else if (content instanceof ArrayBuffer) {
+                blob = new Blob([new Uint8Array(content)], { type })
+            } else if (typeof content === 'string') {
+                blob = new Blob([content], { type: 'text/plain' })
+            } else {
+                blob = new Blob([content], { type })
+            }
+            return blob
+        }
+    }
 
     class Entry {
         constructor(isFile = true, isDirectory = false, name, fullPath) {
@@ -199,6 +218,7 @@
 
         })
     }
+
     Entry.copyFrom = function (entry) {
         const en = entry.isFile ? new FileEntry(entry.name, entry.fullPath, entry.file) :
             new DirectoryEntry(entry.name, entry.fullPath)
@@ -218,8 +238,18 @@
          * @param {Boolean} append 
          */
         write(content, type = 'text/plain', append = false) {
-            return this._dispatch('write', content, type, append)
+            if (!append) {
+                return this._dispatch('write', content, type, append)
+            }
+            return this.append(content)
         }
+
+        append(content) {
+            return this.getBlob().then(function (blob) {
+                return this.write(new Blob([blob, Utils.contentToBlob(content, blob.type)]))
+            }.bind(this))
+        }
+
 
         getBlob() {
             return this._dispatch('getBlob')
@@ -413,27 +443,18 @@
             }
         }
 
-        /**
-         * TODO::// 暂不支持 append
+        /**         * 
          * @param {Entry} entry 
          * @param {写入的内容} content 
          * @param {blob类型} type 
          * @param {是否是append模式} append 
          */
-        write(entry, content, type = 'text/plain', append = false) {
+        write(entry, content, type = 'text/plain') {
             this._checkEntry(entry)
             if (entry.isFile !== true) {
                 throw new FileError({ message: FILE_ERROR.ONLY_FILE_WRITE })
             }
-            let data = content
-            // 不是blob，转为blob
-            if (content instanceof ArrayBuffer) {
-                data = new Blob([new Uint8Array(content)], { type })
-            } else if (typeof content === 'string') {
-                data = new Blob([content], { type: 'text/plain' })
-            } else {
-                data = new Blob([content], { type })
-            }
+            let data = Utils.contentToBlob(content, type)
             let file = entry.file
             if (!file) {
                 // 不存在创建

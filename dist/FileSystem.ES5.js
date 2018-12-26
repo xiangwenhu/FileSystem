@@ -165,6 +165,25 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
     }),
         NOT_SUPPORTED = new Error('');
 
+    var Utils = {
+        contentToBlob: function contentToBlob(content) {
+            var type = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 'text/plain';
+
+            var blob = void 0;
+            // 不是blob，转为blob
+            if (content instanceof Blob) {
+                blob = content;
+            } else if (content instanceof ArrayBuffer) {
+                blob = new Blob([new Uint8Array(content)], { type: type });
+            } else if (typeof content === 'string') {
+                blob = new Blob([content], { type: 'text/plain' });
+            } else {
+                blob = new Blob([content], { type: type });
+            }
+            return blob;
+        }
+    };
+
     var Entry = function () {
         function Entry() {
             var isFile = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : true;
@@ -257,6 +276,7 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
             });
         });
     };
+
     Entry.copyFrom = function (entry) {
         var en = entry.isFile ? new FileEntry(entry.name, entry.fullPath, entry.file) : new DirectoryEntry(entry.name, entry.fullPath);
         en.metadata = entry.metadata;
@@ -288,7 +308,17 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
                 var type = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 'text/plain';
                 var append = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : false;
 
-                return this._dispatch('write', content, type, append);
+                if (!append) {
+                    return this._dispatch('write', content, type, append);
+                }
+                return this.append(content);
+            }
+        }, {
+            key: 'append',
+            value: function append(content) {
+                return this.getBlob().then(function (blob) {
+                    return this.write(new Blob([blob, Utils.contentToBlob(content, blob.type)]));
+                }.bind(this));
             }
         }, {
             key: 'getBlob',
@@ -470,8 +500,7 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
                 }
             }
 
-            /**
-             * TODO::// 暂不支持 append
+            /**         * 
              * @param {Entry} entry 
              * @param {写入的内容} content 
              * @param {blob类型} type 
@@ -482,21 +511,12 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
             key: 'write',
             value: function write(entry, content) {
                 var type = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : 'text/plain';
-                var append = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : false;
 
                 this._checkEntry(entry);
                 if (entry.isFile !== true) {
                     throw new FileError({ message: FILE_ERROR.ONLY_FILE_WRITE });
                 }
-                var data = content;
-                // 不是blob，转为blob
-                if (content instanceof ArrayBuffer) {
-                    data = new Blob([new Uint8Array(content)], { type: type });
-                } else if (typeof content === 'string') {
-                    data = new Blob([content], { type: 'text/plain' });
-                } else {
-                    data = new Blob([content], { type: type });
-                }
+                var data = Utils.contentToBlob(content, type);
                 var file = entry.file;
                 if (!file) {
                     // 不存在创建
