@@ -486,22 +486,20 @@
                     if (FileUtil.isFolder(file)) { //文件夹
                         await currentDir.getDirectory(file.name)
                     } else { // 文件
-                        try {
-                            // 不存在不创建， 会返回404
-                            fileEntry = await currentDir.getFile(file.name, { create: false })
-                        } catch (err) { // 文件不存或者别的错误
-                            if (err.code === 404) {
-                                console.log('写入' + file.name + ' size', (file.size / 1024 / 1024).toFixed(2) + 'M')
-                                var start = new Date()
-                                fileEntry = await currentDir.getFile(file.name, { create: true })
-                                await fileEntry.write(file, file.type)
-                                console.log('timing:' + (new Date() - start) / 1000 + 's')
-                                console.log('')
-                                continue
-                            }
-                            alert(err.message || '未知错误')
+
+                        // 不存在不创建， 会返回404
+                        fileEntry = await currentDir.getFile(file.name, { create: false })
+
+                        if (!fileEntry) {
+                            console.log('写入' + file.name + ' size', (file.size / 1024 / 1024).toFixed(2) + 'M')
+                            var start = new Date()
+                            fileEntry = await currentDir.getFile(file.name, { create: true })
+                            await fileEntry.write(file, file.type)
+                            console.log('timing:' + (new Date() - start) / 1000 + 's')
+                            console.log('')
                             continue
                         }
+
                         //文件存在,提示覆盖
                         override = window.confirm(`${file.name}已经存在，是否覆盖？`)
                         if (!override) {
