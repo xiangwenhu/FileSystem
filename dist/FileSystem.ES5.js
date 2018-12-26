@@ -159,11 +159,7 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
         code: 1000,
         message: '方法未实现'
     }),
-        NOT_FOUND_ERROR = new FileError({
-        code: 404,
-        message: '未找到'
-    }),
-        NOT_SUPPORTED = new Error('');
+        NOT_SUPPORTED = new Error('浏览器不支持改功能');
 
     var Utils = {
         contentToBlob: function contentToBlob(content) {
@@ -266,13 +262,13 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
             if (FileSystem._instance) {
                 var _FileSystem$_instance;
 
-                return resolve((_FileSystem$_instance = FileSystem._instance)[method].apply(_FileSystem$_instance, [_this].concat(args)));
+                return resolve((_FileSystem$_instance = FileSystem._instance._provider)[method].apply(_FileSystem$_instance, [_this].concat(args)));
             }
             return FileSystem.getInstance().then(function (fs) {
                 var _FileSystem$_instance2;
 
                 FileSystem._instance = fs;
-                return resolve((_FileSystem$_instance2 = FileSystem._instance)[method].apply(_FileSystem$_instance2, [_this].concat(args)));
+                return resolve((_FileSystem$_instance2 = FileSystem._instance._provider)[method].apply(_FileSystem$_instance2, [_this].concat(args)));
             });
         });
     };
@@ -429,22 +425,100 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
         function FileSystem() {
             _classCallCheck(this, FileSystem);
 
-            // DB
-            this._db = null;
             // 实例
             this._instance = null;
-            // store Name
-            this._storeName = FileSystem._storeName;
             // root
             this.root = null;
-            // 0 未初始化， 1初始化中
-            this._state = 0;
+            this._provider = null;
         }
 
-        _createClass(FileSystem, [{
+        _createClass(FileSystem, null, [{
+            key: 'getInstance',
+            value: function getInstance() {
+                var _this4 = this;
+
+                var dbVersion = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : 1.0;
+
+                if (!FileSystem.isSupported) {
+                    throw NOT_SUPPORTED;
+                }
+                if (this._instance) {
+                    return Promise.resolve(this._instance);
+                }
+                return IndexedDBProvider.getInstance(dbVersion, FileSystem._dbName, FileSystem._storeName).then(function (provider) {
+                    _this4._instance = new FileSystem();
+                    _this4._instance._provider = provider;
+                    _this4._instance.root = new DirectoryEntry('/', '/');
+                    delete _this4._instance._instance;
+                    return _this4._instance;
+                });
+            }
+        }]);
+
+        return FileSystem;
+    }();
+
+    FileSystem._dbName = '_fs_db_';
+    FileSystem._storeName = '_fs_store';
+
+    var IndexedDBStoreFactory = function () {
+        function IndexedDBStoreFactory() {
+            _classCallCheck(this, IndexedDBStoreFactory);
+        }
+
+        _createClass(IndexedDBStoreFactory, null, [{
+            key: 'getInstance',
+            value: function getInstance() {
+                var dbVersion = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : 1.0;
+                var dbName = arguments[1];
+                var storeName = arguments[2];
+
+                return new Promise(function (resolve, reject) {
+                    var request = self.indexedDB.open(dbName, dbVersion);
+                    request.onerror = function () {
+                        return reject(null);
+                    };
+                    request.onsuccess = function () {
+                        var db = request.result;
+                        // 老版本，新版本是onupgradeneeded
+                        if (db.setVersion && db.version !== dbVersion) {
+                            var setVersion = db.setVersion(dbVersion);
+                            setVersion.onsuccess = function () {
+                                if (!db.objectStoreNames.contains(storeName)) {
+                                    db.createObjectStore(storeName);
+                                }
+                                return resolve(db);
+                            };
+                        } else {
+                            return resolve(db);
+                        }
+                        return resolve(null);
+                    };
+                    request.onupgradeneeded = function (event) {
+                        var db = event.target.result;
+                        if (!db.objectStoreNames.contains(storeName)) {
+                            db.createObjectStore(storeName);
+                        }
+                    };
+                });
+            }
+        }]);
+
+        return IndexedDBStoreFactory;
+    }();
+
+    var IndexedDBProvider = function () {
+        function IndexedDBProvider(db, storeName) {
+            _classCallCheck(this, IndexedDBProvider);
+
+            this._db = db;
+            this._storeName = storeName;
+        }
+
+        _createClass(IndexedDBProvider, [{
             key: '_toPromise',
             value: function _toPromise(method) {
-                var _this4 = this;
+                var _this5 = this;
 
                 for (var _len2 = arguments.length, args = Array(_len2 > 1 ? _len2 - 1 : 0), _key2 = 1; _key2 < _len2; _key2++) {
                     args[_key2 - 1] = arguments[_key2];
@@ -461,9 +535,9 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
                         var _trans$objectStore;
 
                         // 获得事务
-                        var trans = _this4.transaction;
+                        var trans = _this5.transaction;
                         // 获得请求
-                        var req = (_trans$objectStore = trans.objectStore(_this4._storeName))[method].apply(_trans$objectStore, _toConsumableArray(args));
+                        var req = (_trans$objectStore = trans.objectStore(_this5._storeName))[method].apply(_trans$objectStore, _toConsumableArray(args));
                         //游标
                         if (['openCursor', 'openKeyCursor'].indexOf(method) >= 0 && suc) {
 
@@ -603,7 +677,7 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
         }, {
             key: 'getEntry',
             value: function getEntry(entry, path, _ref4) {
-                var _this5 = this;
+                var _this6 = this;
 
                 var create = _ref4.create,
                     _ref4$exclusive = _ref4.exclusive,
@@ -628,7 +702,7 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
                             newEntry = getFile ? new FileEntry(name, path) : new DirectoryEntry(name, path),
                             fileE = getFile ? new FSFile(name, 0, null, new Date(), null) : null;
                         if (getFile) newEntry.file = fileE;
-                        return _this5._toPromise('put', newEntry, newEntry.fullPath).then(function () {
+                        return _this6._toPromise('put', newEntry, newEntry.fullPath).then(function () {
                             return Entry.copyFrom(newEntry);
                         });
                     } else if (!create && !fe) {
@@ -780,71 +854,14 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
             }
         }], [{
             key: 'getInstance',
-            value: function getInstance() {
-                var _this6 = this;
-
-                var dbVersion = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : 1.0;
-
-                if (!FileSystem.isSupported) {
-                    throw NOT_SUPPORTED;
-                }
-                if (this._instance) {
-                    Promise.resolve(this._instance);
-                }
-                //确保同一实例
-                if (this._state === 1) {
-                    return new Promise(function (resolve, reject) {
-                        var times = 0;
-                        var ticket = setInterval(function () {
-                            if (_this6._instance && _this6._state == 2) {
-                                times++;
-                                clearInterval(ticket);
-                                return resolve(_this6._instance);
-                            }
-                            if (times > 10) {
-                                return reject(FILE_ERROR.INITIALIZE_FAILED);
-                            }
-                        }, 5);
-                    });
-                }
-                //标记在初始化中
-                this._state = 1;
-                return new Promise(function (resolve, reject) {
-                    var request = self.indexedDB.open(FileSystem._dbName, dbVersion);
-                    request.onerror = function () {
-                        _this6._state = 0;
-                        return reject(null);
-                    };
-                    request.onsuccess = function () {
-                        var db = request.result;
-                        // 老版本，新版本是onupgradeneeded
-                        if (db.setVersion && db.version !== dbVersion) {
-                            var setVersion = db.setVersion(dbVersion);
-                            setVersion.onsuccess = function () {
-                                db.createObjectStore(this._storeName);
-                                this._instance = new FileSystem();
-                                this._instance._db = request.result;
-                                this._instance.root = new DirectoryEntry('/', '/');
-                                this._state = 2;
-                                return resolve(this._instance);
-                            };
-                        } else {
-                            _this6._instance = new FileSystem();
-                            _this6._instance._db = request.result;
-                            _this6._instance.root = new DirectoryEntry('/', '/');
-                            _this6._state = 2;
-                            return resolve(_this6._instance);
-                        }
-                        return null;
-                    };
-                    request.onupgradeneeded = function (event) {
-                        event.target.result.createObjectStore(_this6._storeName);
-                    };
+            value: function getInstance(dbVersion, dbName, storeName) {
+                return IndexedDBStoreFactory.getInstance(dbVersion, dbName, storeName).then(function (db) {
+                    return new IndexedDBProvider(db, storeName);
                 });
             }
         }]);
 
-        return FileSystem;
+        return IndexedDBProvider;
     }();
 
     FileSystem.isSupported = function () {
@@ -853,9 +870,6 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
         self.IDBKeyRange = self.IDBKeyRange || self.webkitIDBKeyRange || self.msIDBKeyRange;
         return !!(self.indexedDB && self.IDBTransaction && self.IDBKeyRange);
     };
-
-    FileSystem._dbName = '_fs_db_';
-    FileSystem._storeName = '_fs_store';
 
     self.FILE_ERROR = FILE_ERROR;
     self.URLUtil = URLUtil;

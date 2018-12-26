@@ -134,12 +134,7 @@
         code: 1000,
         message: '方法未实现'
     }),
-        NOT_FOUND_ERROR = new FileError({
-            code: 404,
-            message: '未找到'
-        }),
-        NOT_SUPPORTED = new Error('')
-
+        NOT_SUPPORTED = new Error('浏览器不支持改功能')
 
     const Utils = {
         contentToBlob(content, type = 'text/plain') {
@@ -209,11 +204,11 @@
     Entry.prototype._dispatch = function (method, ...args) {
         return new Promise(resolve => {
             if (FileSystem._instance) {
-                return resolve(FileSystem._instance[method](this, ...args))
+                return resolve(FileSystem._instance._provider[method](this, ...args))
             }
             return FileSystem.getInstance().then(fs => {
                 FileSystem._instance = fs
-                return resolve(FileSystem._instance[method](this, ...args))
+                return resolve(FileSystem._instance._provider[method](this, ...args))
             })
 
         })
@@ -322,16 +317,11 @@
 
     class FileSystem {
         constructor() {
-            // DB
-            this._db = null
             // 实例
             this._instance = null
-            // store Name
-            this._storeName = FileSystem._storeName
             // root
             this.root = null
-            // 0 未初始化， 1初始化中
-            this._state = 0
+            this._provider = null
         }
 
         static getInstance(dbVersion = 1.0) {
@@ -339,30 +329,26 @@
                 throw NOT_SUPPORTED
             }
             if (this._instance) {
-                Promise.resolve(this._instance)
+                return Promise.resolve(this._instance)
             }
-            //确保同一实例
-            if (this._state === 1) {
-                return new Promise((resolve, reject) => {
-                    let times = 0
-                    const ticket = setInterval(() => {
-                        if (this._instance && this._state == 2) {
-                            times++
-                            clearInterval(ticket)
-                            return resolve(this._instance)
-                        }
-                        if (times > 10) {
-                            return reject(FILE_ERROR.INITIALIZE_FAILED)
-                        }
-                    }, 5)
-                })
-            }
-            //标记在初始化中
-            this._state = 1
+            return IndexedDBProvider.getInstance(dbVersion, FileSystem._dbName, FileSystem._storeName).then(provider => {
+                this._instance = new FileSystem()
+                this._instance._provider = provider
+                this._instance.root = new DirectoryEntry('/', '/')
+                delete this._instance._instance
+                return this._instance
+            })
+        }
+    }
+
+    FileSystem._dbName = '_fs_db_'
+    FileSystem._storeName = '_fs_store'
+
+    class IndexedDBStoreFactory {
+        static getInstance(dbVersion = 1.0, dbName, storeName) {
             return new Promise((resolve, reject) => {
-                const request = self.indexedDB.open(FileSystem._dbName, dbVersion)
+                const request = self.indexedDB.open(dbName, dbVersion)
                 request.onerror = () => {
-                    this._state = 0
                     return reject(null)
                 }
                 request.onsuccess = () => {
@@ -370,28 +356,42 @@
                     // 老版本，新版本是onupgradeneeded
                     if (db.setVersion && db.version !== dbVersion) {
                         const setVersion = db.setVersion(dbVersion)
-                        setVersion.onsuccess = function () {
-                            db.createObjectStore(this._storeName)
-                            this._instance = new FileSystem()
-                            this._instance._db = request.result
-                            this._instance.root = new DirectoryEntry('/', '/')
-                            this._state = 2
-                            return resolve(this._instance)
+                        setVersion.onsuccess = () => {
+                            if (!db.objectStoreNames.contains(storeName)) {
+                                db.createObjectStore(storeName)
+                            }
+                            return resolve(db)
                         }
                     } else {
-                        this._instance = new FileSystem()
-                        this._instance._db = request.result
-                        this._instance.root = new DirectoryEntry('/', '/')
-                        this._state = 2
-                        return resolve(this._instance)
+                        return resolve(db)
                     }
-                    return null
+                    return resolve(null)
                 }
                 request.onupgradeneeded = event => {
-                    event.target.result.createObjectStore(this._storeName)
+                    const db = event.target.result
+                    if (!db.objectStoreNames.contains(storeName)) {
+                        db.createObjectStore(storeName)
+                    }
                 }
             })
         }
+    }
+
+    class IndexedDBProvider {
+
+        constructor(db, storeName) {
+            this._db = db
+            this._storeName = storeName
+        }
+
+        static getInstance(dbVersion, dbName, storeName) {
+            return IndexedDBStoreFactory
+                .getInstance(dbVersion, dbName, storeName)
+                .then(db => {
+                    return new IndexedDBProvider(db, storeName)
+                })
+        }
+
 
         get transaction() {
             return this._db.transaction([this._storeName], IDBTransaction.READ_WRITE || 'readwrite')
@@ -666,9 +666,6 @@
         self.IDBKeyRange = self.IDBKeyRange || self.webkitIDBKeyRange || self.msIDBKeyRange
         return !!(self.indexedDB && self.IDBTransaction && self.IDBKeyRange)
     }
-
-    FileSystem._dbName = '_fs_db_'
-    FileSystem._storeName = '_fs_store'
 
     self.FILE_ERROR = FILE_ERROR
     self.URLUtil = URLUtil
