@@ -658,7 +658,6 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
                 var range = null,
                     results = [];
                 if (entry.fullPath != DIR_SEPARATOR && entry.fullPath != '') {
-                    //console.log(fullPath + '/', fullPath + DIR_OPEN_BOUND)
                     range = IDBKeyRange.bound(entry.fullPath + DIR_SEPARATOR, entry.fullPath + DIR_OPEN_BOUND, false, true);
                 }
                 var valPartsLen = void 0,

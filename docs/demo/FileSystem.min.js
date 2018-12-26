@@ -18,7 +18,7 @@
      * @param {*是否需要执行结果集} needResults
      */
     const promiseForEach = function promiseForEach(arr, cb, needResults) {
-        let realResult = []
+        const realResult = []
         let result = Promise.resolve()
         Array.from(arr).forEach((val, index) => {
             result = result.then(() => {
@@ -37,18 +37,18 @@
         // end with one (e.g. a directory). Also, resolve '.' and '..' to an absolute
         // one. This method ensures path is legit!
         resolveToFullPath(cwdFullPath, path) {
-            var fullPath = path
+            let fullPath = path
 
-            var relativePath = path[0] != DIR_SEPARATOR
+            const relativePath = path[0] != DIR_SEPARATOR
             if (relativePath) {
                 fullPath = cwdFullPath + DIR_SEPARATOR + path
             }
 
             // Normalize '.'s,  '..'s and '//'s.
-            var parts = fullPath.split(DIR_SEPARATOR)
-            var finalParts = []
-            for (var i = 0; i < parts.length; ++i) {
-                var part = parts[i]
+            const parts = fullPath.split(DIR_SEPARATOR)
+            const finalParts = []
+            for (let i = 0; i < parts.length; ++i) {
+                const part = parts[i]
                 if (part === '..') {
                     // Go up one level.
                     if (!finalParts.length) {
@@ -100,8 +100,8 @@
     const ReaderUtil = {
         read(blob, method) {
             return new Promise((resolve, reject) => {
-                var reader = new FileReader()
-                var ps = [].slice.call(arguments, 2)
+                const reader = new FileReader()
+                const ps = [].slice.call(arguments, 2)
                 ps.unshift(blob)
                 reader[method].apply(reader, ps)
                 reader.onload = function () {
@@ -200,7 +200,7 @@
         })
     }
     Entry.copyFrom = function (entry) {
-        var en = entry.isFile ? new FileEntry(entry.name, entry.fullPath, entry.file) :
+        const en = entry.isFile ? new FileEntry(entry.name, entry.fullPath, entry.file) :
             new DirectoryEntry(entry.name, entry.fullPath)
         en.metadata = entry.metadata
         return en
@@ -315,7 +315,7 @@
             if (this._state === 1) {
                 return new Promise((resolve, reject) => {
                     let times = 0
-                    let ticket = setInterval(() => {
+                    const ticket = setInterval(() => {
                         if (this._instance && this._state == 2) {
                             times++
                             clearInterval(ticket)
@@ -330,16 +330,16 @@
             //标记在初始化中
             this._state = 1
             return new Promise((resolve, reject) => {
-                let request = self.indexedDB.open(FileSystem._dbName, dbVersion)
+                const request = self.indexedDB.open(FileSystem._dbName, dbVersion)
                 request.onerror = () => {
                     this._state = 0
                     return reject(null)
                 }
                 request.onsuccess = () => {
-                    let db = request.result
+                    const db = request.result
                     // 老版本，新版本是onupgradeneeded
                     if (db.setVersion && db.version !== dbVersion) {
-                        var setVersion = db.setVersion(dbVersion)
+                        const setVersion = db.setVersion(dbVersion)
                         setVersion.onsuccess = function () {
                             db.createObjectStore(this._storeName)
                             this._instance = new FileSystem()
@@ -377,9 +377,9 @@
 
                 return new Promise((resolve, reject) => {
                     // 获得事务
-                    let trans = this.transaction
+                    const trans = this.transaction
                     // 获得请求
-                    let req = trans.objectStore(this._storeName)[method](...args)
+                    const req = trans.objectStore(this._storeName)[method](...args)
                     //游标
                     if (['openCursor', 'openKeyCursor'].indexOf(method) >= 0 && suc) {
 
@@ -475,7 +475,7 @@
 
         removeRecursively(entry) {
             this._checkEntry(entry)
-            var range = IDBKeyRange.bound(entry.fullPath, entry.fullPath + DIR_OPEN_BOUND, false, true)
+            const range = IDBKeyRange.bound(entry.fullPath, entry.fullPath + DIR_OPEN_BOUND, false, true)
             return this._toPromise('delete', range).then(() => true)
         }
 
@@ -484,7 +484,7 @@
          * @param {Entry} entry 
          */
         getMetadata(entry) {
-            let f = entry.file || {}
+            const f = entry.file || {}
             return new Metadata(f && f.lastModifiedDate || null, f && f.size || 0)
         }
 
@@ -510,7 +510,7 @@
                     })
                 } else if (create === true && !fe) {
                     //创建 && 文件不存在
-                    let name = path.split(DIR_SEPARATOR).pop(),
+                    const name = path.split(DIR_SEPARATOR).pop(),
                         newEntry = getFile ? new FileEntry(name, path) : new DirectoryEntry(name, path),
                         fileE = getFile ? new FSFile(name, 0, null, new Date(), null) : null
                     if (getFile) newEntry.file = fileE
@@ -542,7 +542,7 @@
             if (entry.fullPath === DIR_SEPARATOR) {
                 return entry
             }
-            let parentFullPath = entry.fullPath.substring(0, entry.fullPath.lastIndexOf(DIR_SEPARATOR))
+            const parentFullPath = entry.fullPath.substring(0, entry.fullPath.lastIndexOf(DIR_SEPARATOR))
             //上级目录为根目录的情况
             if (parentFullPath === '') {
                 return this.root
@@ -558,7 +558,6 @@
             let range = null,
                 results = []
             if (entry.fullPath != DIR_SEPARATOR && entry.fullPath != '') {
-                //console.log(fullPath + '/', fullPath + DIR_OPEN_BOUND)
                 range = IDBKeyRange.bound(
                     entry.fullPath + DIR_SEPARATOR, entry.fullPath + DIR_OPEN_BOUND, false, true)
             }
@@ -626,12 +625,12 @@
                 // 如果获取'/'直接返回当前目录
                 return entry
             }
-            let rPath = URLUtil.resolveToFullPath(entry.fullPath, path)
+            const rPath = URLUtil.resolveToFullPath(entry.fullPath, path)
             if (rPath.length < path.length) {
                 return entry
             }
             path = rPath.substring(entry.fullPath.length)
-            let dirs = path.split(DIR_SEPARATOR)
+            const dirs = path.split(DIR_SEPARATOR)
             return promiseForEach(dirs, (dir, index) => {
                 return entry.getDirectory(dirs.slice(0, index + 1).join('/'), { create: true })
             }, true).then((dirEntes) => {
