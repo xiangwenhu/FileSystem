@@ -1,6 +1,11 @@
 
 # 基于indexedDB和promise的文件系统
-<br/>
+
+## 新版本
+[idb-filesystem-api](https://github.com/xiangwenhu/idb-fs)：
+基于 indexedDB 遵循 [File System API](https://developer.mozilla.org/en-US/docs/Web/API/File_System_API) 异步 API 实现的前端文件系统。
+
+
 ## 如何使用
 <pre>
     window.onload = async function () {
